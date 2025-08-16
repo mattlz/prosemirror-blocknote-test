@@ -12,6 +12,38 @@ import { useMutation, useQuery } from "convex/react";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 
+function Sidebar(props: { documentId: string | null; activePageDocId: string | null; onSelect: (docId: string) => void; onCreatePage: () => void }): ReactElement {
+	const pages = useQuery(
+		props.documentId ? api.pages.list : (api.documents.list as any),
+		props.documentId ? ({ documentId: props.documentId as any, parentPageId: undefined as any } as any) : ({} as any)
+	) ?? [];
+	const renamePage = useMutation(api.pages.rename);
+	const removePage = useMutation(api.pages.remove);
+	return (
+		<div style={{ width: 260, borderRight: "1px solid #e5e7eb", padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+			<div style={{ display: "flex", gap: 8 }}>
+				<button onClick={props.onCreatePage} disabled={!props.documentId}>+ Page</button>
+			</div>
+			<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+				{(props.documentId ? pages : []).sort((a: any, b: any) => a.order - b.order).map((p: any) => (
+					<div key={p._id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+						<button onClick={() => props.onSelect(p.docId)} style={{ flex: 1, textAlign: "left", background: props.activePageDocId === p.docId ? "#eef2ff" : undefined }}>
+							{p.title || "Untitled"}
+						</button>
+						<button title="Rename" onClick={async () => {
+							const title = prompt("Rename page", p.title) || p.title;
+							await renamePage({ pageId: p._id, title });
+						}}>✎</button>
+						<button title="Delete" onClick={async () => {
+							if (confirm("Delete page?")) await removePage({ pageId: p._id });
+						}}>🗑</button>
+					</div>
+				))}
+			</div>
+		</div>
+	);
+}
+
 function AuthControls(): ReactElement {
 	const token = useAuthToken();
 	const { signIn, signOut } = useAuthActions();
@@ -45,10 +77,25 @@ function AuthControls(): ReactElement {
 	);
 }
 
+function DocumentPicker(props: { documentId: string | null; onSelect: (id: string) => void; onCreate: () => void }): ReactElement {
+	const docs = useQuery(api.documents.list, {}) ?? [];
+	return (
+		<div style={{ display: "flex", gap: 8, padding: 8, borderBottom: "1px solid #e5e7eb" }}>
+			<select value={props.documentId ?? ""} onChange={(e) => props.onSelect(e.target.value)}>
+				<option value="">Select a document…</option>
+				{docs.map((d: any) => (
+					<option key={d._id} value={d._id}>{d.title}</option>
+				))}
+			</select>
+			<button onClick={props.onCreate}>+ Document</button>
+		</div>
+	);
+}
+
 function DebugTopBar(props: {
-	docId: string;
+	pageDocId: string | null;
 	isLoading: boolean;
-	onNewId: () => void;
+	onNewPage: () => void;
 }): ReactElement {
 	return (
 		<div style={{
@@ -63,18 +110,18 @@ function DebugTopBar(props: {
 			zIndex: 10,
 		}}>
 			<strong>Convex x BlockNote</strong>
-			<span style={{ color: "#6b7280" }}>Doc ID:</span>
-			<code>{props.docId}</code>
+			<span style={{ color: "#6b7280" }}>Page docId:</span>
+			<code>{props.pageDocId ?? "—"}</code>
 			<span style={{ color: "#6b7280" }}>Status:</span>
 			<code>{props.isLoading ? "Loading" : "Ready"}</code>
-			<button onClick={props.onNewId} style={{ marginLeft: "auto" }}>New Doc</button>
+			<button onClick={props.onNewPage} style={{ marginLeft: "auto" }}>New Page</button>
 			<AuthControls />
 		</div>
 	);
 }
 
-function PresenceAvatars(props: { docId: string }): ReactElement {
-	const presence = useQuery(api.presence.list, { docId: props.docId }) ?? [];
+function PresenceAvatars(props: { docId: string | null }): ReactElement {
+	const presence = props.docId ? useQuery(api.presence.list, { docId: props.docId }) ?? [] : [];
 	return (
 		<div style={{ display: "flex", gap: 8, padding: "8px 12px" }}>
 			{presence.map(p => (
@@ -131,29 +178,19 @@ function remoteCursorPlugin(getPresence: () => Array<{ userId: string; name: str
 	});
 }
 
-function EditorBody(): ReactElement {
-	const [docId, setDocId] = useState<string>(() => {
-		const fromHash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
-		return fromHash || "demo-doc";
-	});
-
+function DocumentEditor({ docId }: { docId: string }): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
-
 	const sync = useBlockNoteSync<BlockNoteEditor>(api.example, docId, {
 		snapshotDebounceMs: 1000,
 		editorOptions: {
 			_extensions: {
-				remoteCursors: (editor: BlockNoteEditor) => ({
-					plugin: remoteCursorPlugin(() => presence as any),
-				}),
+				remoteCursors: () => ({ plugin: remoteCursorPlugin(() => presence as any) }),
 			},
 		},
 	});
 
 	const token = useAuthToken();
 	const heartbeat = useMutation(api.presence.heartbeat);
-
-	// send presence heartbeat when signed in
 	useEffect(() => {
 		if (!token) return;
 		let active = true;
@@ -161,39 +198,56 @@ function EditorBody(): ReactElement {
 		const name = `User`;
 		const interval = setInterval(() => {
 			if (!active) return;
-			// Get current selection head position
 			const pos = (sync as any)?.editor?.prosemirrorState?.selection?.head ?? 0;
 			heartbeat({ docId, cursor: String(pos), name, color }).catch(() => {});
 		}, 1000);
-		return () => {
-			active = false;
-			clearInterval(interval);
-		};
+		return () => { active = false; clearInterval(interval); };
 	}, [docId, heartbeat, token, (sync as any)?.editor]);
 
-	const onNewId = (): void => {
-		const newId = Math.random().toString(36).slice(2);
-		setDocId(newId);
-		if (typeof window !== "undefined") {
-			window.location.hash = newId;
-		}
+	if ((sync as any)?.isLoading) return <p style={{ padding: 16 }}>Loading…</p> as any;
+	if (!(sync as any)?.editor) return <div style={{ padding: 16 }}>Editor not ready</div> as any;
+	return (
+		<div style={{ padding: 16 }}>
+			<BlockNoteView editor={(sync as any).editor} />
+		</div>
+	);
+}
+
+function EditorBody(): ReactElement {
+	const [documentId, setDocumentId] = useState<string | null>(null);
+	const [pageDocId, setPageDocId] = useState<string | null>(null);
+	const createDocument = useMutation(api.documents.create);
+	const createPage = useMutation(api.pages.create);
+
+	const onCreateDocument = async (): Promise<void> => {
+		const title = prompt("New document title", "Untitled Document") || "Untitled Document";
+		const id = await createDocument({ title });
+		setDocumentId(id as any);
+		setPageDocId(null);
+	};
+
+	const onCreatePage = async (): Promise<void> => {
+		if (!documentId) return;
+		const title = prompt("New page title", "Untitled") || "Untitled";
+		const { docId } = await createPage({ documentId: documentId as any, title });
+		setPageDocId(docId);
 	};
 
 	return (
-		<div style={{ maxWidth: 900, margin: "0 auto" }}>
-			<DebugTopBar docId={docId} isLoading={sync.isLoading} onNewId={onNewId} />
-			<PresenceAvatars docId={docId} />
-			{sync.isLoading ? (
-				<p style={{ padding: 16 }}>Loading…</p>
-			) : sync.editor ? (
-				<div style={{ padding: 16 }}>
-					<BlockNoteView editor={sync.editor} />
-				</div>
-			) : (
-				<div style={{ padding: 16 }}>
-					<button onClick={() => sync.create?.({ type: "doc", content: [] })}>Create document</button>
-				</div>
-			)}
+		<div style={{ display: "flex", minHeight: "100vh" }}>
+			<div style={{ width: 260, display: "flex", flexDirection: "column" }}>
+				<DocumentPicker documentId={documentId} onSelect={(id) => { setDocumentId(id || null); setPageDocId(null); }} onCreate={onCreateDocument} />
+				<Sidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} />
+			</div>
+			<div style={{ flex: 1 }}>
+				<DebugTopBar pageDocId={pageDocId} isLoading={false} onNewPage={onCreatePage} />
+				<PresenceAvatars docId={pageDocId} />
+				{!pageDocId ? (
+					<div style={{ padding: 16 }}>{documentId ? "Select or create a page" : "Select or create a document"}</div>
+				) : (
+					<DocumentEditor docId={pageDocId} />
+				)}
+			</div>
 		</div>
 	);
 }
