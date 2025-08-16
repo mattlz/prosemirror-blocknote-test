@@ -10,8 +10,6 @@ import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
-import type { DefaultSuggestionItem } from "@blocknote/core/types/src/extensions/SuggestionMenu/DefaultSuggestionItem";
-import { insertOrUpdateBlock } from "@blocknote/core/types/src/extensions/SuggestionMenu/getDefaultSlashMenuItems";
 import { bannerSchema } from "./blocks/banner";
 import { SuggestionMenuController } from "@blocknote/react";
 
@@ -194,7 +192,7 @@ function remoteCursorPlugin(getPresence: () => Array<{ userId: string; name: str
 	});
 }
 
-function DocumentEditor({ docId }: { docId: string }): ReactElement {
+function DocumentEditor({ docId, onProvideInsert }: { docId: string; onProvideInsert?: (ops: { insertBanner: () => void }) => void }): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
 	const sync = useBlockNoteSync<BlockNoteEditor>(api.example, docId, {
 		snapshotDebounceMs: 1000,
@@ -227,6 +225,40 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 			},
 		},
 	});
+
+	// Provide insert function to toolbar when the editor is ready
+	useEffect(() => {
+		if (!onProvideInsert) return;
+		const editor: any = (sync as any)?.editor;
+		if (!editor) return;
+		const insertBanner = (): void => {
+			try {
+				if (typeof editor.focus === "function") editor.focus();
+				else if ((editor as any).pmView?.focus) (editor as any).pmView.focus();
+			} catch {}
+			
+			// Create a properly structured block with required id
+			const blockData = {
+				id: crypto.randomUUID(), // Generate a unique ID
+				type: "banner",
+				content: [{ type: "text", text: "Custom block" }]
+			};
+			
+			const sel = editor.getSelection?.();
+			const safeIds: string[] = Array.isArray(sel?.blocks)
+				? (sel.blocks as any[])
+					.filter((b) => b && typeof b === "object" && typeof (b as any).id === "string" && (b as any).id.length > 0)
+					.map((b) => (b as any).id)
+				: [];
+				
+			if (safeIds.length > 0) {
+				editor.replaceBlocks(safeIds, [blockData]);
+			} else {
+				editor.insertBlocks([blockData]);
+			}
+		};
+		onProvideInsert({ insertBanner });
+	}, [onProvideInsert, (sync as any)?.editor]);
 
 	// Add a visible slash menu item for the banner block
 	useEffect(() => {
@@ -283,7 +315,8 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 	return (
 		<div className="mt-4">
 			<BlockNoteView editor={editorInst}>
-				<SuggestionMenuController triggerCharacter="/" getItems={getItems} />
+				{/* TS types in @blocknote/react can mismatch; cast to any to avoid dev-time errors */}
+				<SuggestionMenuController {...({ triggerCharacter: "/", getItems } as unknown as any)} />
 			</BlockNoteView>
 		</div>
 	);
@@ -302,7 +335,13 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 		const title = prompt("New document title", "Untitled Document") || "Untitled Document";
 		const id = await createDocument({ title });
 		setDocumentId(id as any);
-		setPageDocId(null);
+		try {
+			const { docId } = await createPage({ documentId: id as any, title: "Untitled" });
+			setPageDocId(docId);
+		} catch {
+			// If page creation fails, keep the document selected and let user create manually
+			setPageDocId(null);
+		}
 	};
 
 	const onCreatePage = async (): Promise<void> => {
@@ -327,6 +366,21 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 		if (first?.docId) setPageDocId(first.docId);
 	}, [documentId, pageDocId, pages]);
 
+	// Auto-create a first page when opening a new document without pages
+	const autoCreatedRef = useRef(false);
+	useEffect(() => {
+		if (!documentId) return;
+		if (pageDocId) return;
+		if (autoCreatedRef.current) return;
+		const hasPages = Array.isArray(pages) && (pages as any[]).length > 0;
+		if (!hasPages) {
+			autoCreatedRef.current = true;
+			createPage({ documentId: documentId as any, title: "Untitled" })
+				.then(({ docId }) => setPageDocId(docId))
+				.catch(() => { autoCreatedRef.current = false; });
+		}
+	}, [documentId, pageDocId, pages, createPage]);
+
 	return (
 		<div className="min-h-screen w-full overflow-hidden">
 			{/* Top bar */}
@@ -335,6 +389,15 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 				<button className="inline-flex h-8 items-center rounded-md border px-2 text-sm" onClick={() => setSidebarOpen((v) => !v)}>{sidebarOpen ? "Hide sidebar" : "Show sidebar"}</button>
 				<div className="text-lg font-semibold">{documentTitle}</div>
 				<div className="ml-auto flex items-center gap-2">
+					<select className="h-8 rounded-md border px-2 text-sm" onChange={(e) => {
+						if (e.target.value === "banner" && (window as any).__insertBanner) {
+							(window as any).__insertBanner();
+						}
+						e.target.value = "";
+					}} defaultValue="">
+						<option value="" disabled>Insert…</option>
+						<option value="banner">Banner block</option>
+					</select>
 					<button aria-label="Comments" className={["inline-flex h-8 w-8 items-center justify-center rounded-md border", commentsOpen ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={() => setCommentsOpen((v) => !v)}>💬</button>
 					<PresenceAvatars docId={pageDocId} />
 				</div>
@@ -361,7 +424,7 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 									}} />
 									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
 								</div>
-								<DocumentEditor docId={pageDocId} />
+								<DocumentEditor docId={pageDocId} onProvideInsert={({ insertBanner }) => { (window as any).__insertBanner = insertBanner; }} />
 							</div>
 						</div>
 					)}
