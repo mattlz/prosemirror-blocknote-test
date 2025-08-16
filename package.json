@@ -9,17 +9,23 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@auth/core": "^0.37.4",
+    "@blocknote/core": "^0.35.0",
+    "@blocknote/mantine": "^0.35.0",
+    "@convex-dev/auth": "^0.0.88",
+    "@convex-dev/prosemirror-sync": "^0.1.27",
+    "convex": "^1.25.4",
+    "next": "15.4.6",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.4.6"
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
-    "@eslint/eslintrc": "^3"
+    "typescript": "^5"
   }
 }

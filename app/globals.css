@@ -16,6 +16,11 @@ body {
   overflow-x: hidden;
 }
 
+/* Basic reset for demo */
+* {
+  box-sizing: border-box;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
