@@ -16,6 +16,7 @@ export default defineSchema({
 		parentPageId: v.optional(v.id("pages")),
 		docId: v.string(),
 		title: v.string(),
+		icon: v.optional(v.string()),
 		order: v.number(),
 		createdAt: v.number(),
 	})

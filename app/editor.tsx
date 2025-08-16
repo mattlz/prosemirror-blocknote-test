@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { useBlockNoteSync } from "@convex-dev/prosemirror-sync/blocknote";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
@@ -14,6 +14,34 @@ import type { DefaultSuggestionItem } from "@blocknote/core/types/src/extensions
 import { insertOrUpdateBlock } from "@blocknote/core/types/src/extensions/SuggestionMenu/getDefaultSlashMenuItems";
 import { bannerSchema } from "./blocks/banner";
 import { SuggestionMenuController } from "@blocknote/react";
+
+function IconPicker({ value, onChange }: { value?: string | null; onChange: (val: string | null) => void }): ReactElement {
+	const [open, setOpen] = useState(false);
+	const ref = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+		document.addEventListener("click", onDoc);
+		return () => document.removeEventListener("click", onDoc);
+	}, []);
+	const EMOJIS = ["💡","📄","📋","📊","✅","📌","🚀","✨","🧠","🗂️","📝","📚","🔧","⚙️","🏷️","📎"];
+	return (
+		<div className="relative inline-block" ref={ref}>
+			<button className="inline-flex h-9 w-9 items-center justify-center rounded-md border bg-white text-lg" onClick={() => setOpen((v) => !v)}>
+				{value || "🙂"}
+			</button>
+			{open ? (
+				<div className="absolute z-20 mt-2 w-56 rounded-md border bg-white p-2 shadow-sm">
+					<div className="grid grid-cols-8 gap-1">
+						{EMOJIS.map((e) => (
+							<button key={e} className="h-8 w-8 rounded hover:bg-neutral-100" onClick={() => { onChange(e); setOpen(false); }}>{e}</button>
+						))}
+					</div>
+					<button className="mt-2 w-full rounded border px-2 py-1 text-xs" onClick={() => { onChange(null); setOpen(false); }}>Remove</button>
+				</div>
+			) : null}
+		</div>
+	);
+}
 
 function Sidebar(props: { documentId: string | null; activePageDocId: string | null; onSelect: (docId: string) => void; onCreatePage: () => void } & { onCollapse: () => void }): ReactElement {
 	const pages = useQuery(
@@ -30,7 +58,8 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 			</div>
 			<div className="flex flex-col gap-1">
 				{(props.documentId ? pages : []).sort((a: any, b: any) => a.order - b.order).map((p: any) => (
-					<button key={p._id} onClick={() => props.onSelect(p.docId)} className={["flex items-center justify-between rounded-md px-2 py-1 text-left text-sm hover:bg-neutral-50", props.activePageDocId === p.docId ? "bg-neutral-100" : ""].join(" ")}>
+					<button key={p._id} onClick={() => props.onSelect(p.docId)} className={["flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-neutral-50", props.activePageDocId === p.docId ? "bg-neutral-100" : ""].join(" ")}>
+						<span className="text-lg">{p.icon ?? ""}</span>
 						<span className="truncate">{p.title || "Untitled"}</span>
 					</button>
 				))}
@@ -267,6 +296,7 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 	const [commentsOpen, setCommentsOpen] = useState<boolean>(false);
 	const createDocument = useMutation(api.documents.create);
 	const createPage = useMutation(api.pages.create);
+	const setIconMutation = useMutation(api.pages.setIcon);
 
 	const onCreateDocument = async (): Promise<void> => {
 		const title = prompt("New document title", "Untitled Document") || "Untitled Document";
@@ -287,6 +317,7 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 	const documents = useQuery(api.documents.list, {}) ?? [];
 	const documentTitle = useMemo(() => (documents as any[]).find((d) => d._id === documentId)?.title ?? "All docs", [documents, documentId]);
 	const currentPageTitle = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId)?.title ?? "Untitled", [pages, pageDocId]);
+	const currentPage = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId), [pages, pageDocId]);
 
 	// Preselect first page if none selected
 	useEffect(() => {
@@ -322,7 +353,14 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 					) : (
 						<div className="p-6">
 							<div className="mx-auto w-full max-w-[1200px]">
-								<h1 className="mb-6 mt-6 pl-12 text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
+								<div className="mb-4 flex items-center gap-3 pl-12">
+									<IconPicker value={(pages as any[]).find((p) => p.docId === pageDocId)?.icon ?? null} onChange={(val) => {
+										const page = (pages as any[]).find((p) => p.docId === pageDocId);
+										if (!page) return;
+										setIconMutation({ pageId: page._id, icon: val ?? undefined }).catch(() => {});
+									}} />
+									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
+								</div>
 								<DocumentEditor docId={pageDocId} />
 							</div>
 						</div>

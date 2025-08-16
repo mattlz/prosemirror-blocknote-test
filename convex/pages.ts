@@ -46,6 +46,13 @@ export const rename = mutation({
 	},
 });
 
+export const setIcon = mutation({
+	args: { pageId: v.id("pages"), icon: v.optional(v.string()) },
+	handler: async (ctx, { pageId, icon }) => {
+		await ctx.db.patch(pageId, { icon });
+	},
+});
+
 export const remove = mutation({
 	args: { pageId: v.id("pages") },
 	handler: async (ctx, { pageId }) => {
