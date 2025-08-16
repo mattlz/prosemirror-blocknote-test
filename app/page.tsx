@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useAuthToken } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
@@ -6,9 +7,9 @@ import { useRouter } from "next/navigation";
 export default function Home() {
   const token = useAuthToken();
   const router = useRouter();
-  if (token) {
-    router.replace("/docs");
-  }
+  useEffect(() => {
+    if (token) router.replace("/docs");
+  }, [token, router]);
   return (
     <div className="grid min-h-dvh place-items-center p-6">
       <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm">

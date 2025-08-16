@@ -237,24 +237,35 @@ function DocumentEditor({ docId, onProvideInsert }: { docId: string; onProvideIn
 				else if ((editor as any).pmView?.focus) (editor as any).pmView.focus();
 			} catch {}
 			
-			// Create a properly structured block with required id
-			const blockData = {
-				id: crypto.randomUUID(), // Generate a unique ID
+			// Use BlockNote's proper block structure without manual ID
+			const blockSpec = {
 				type: "banner",
-				content: [{ type: "text", text: "Custom block" }]
+				content: "Custom block"
 			};
 			
-			const sel = editor.getSelection?.();
-			const safeIds: string[] = Array.isArray(sel?.blocks)
-				? (sel.blocks as any[])
-					.filter((b) => b && typeof b === "object" && typeof (b as any).id === "string" && (b as any).id.length > 0)
-					.map((b) => (b as any).id)
-				: [];
+			try {
+				// Try to get current selection and replace if possible
+				const sel = editor.getSelection?.();
+				if (sel?.blocks && Array.isArray(sel.blocks) && sel.blocks.length > 0) {
+					const validBlocks = sel.blocks.filter((b: any) => b && b.id);
+					if (validBlocks.length > 0) {
+						const ids = validBlocks.map((b: any) => b.id);
+						editor.replaceBlocks(ids, [blockSpec]);
+						return;
+					}
+				}
 				
-			if (safeIds.length > 0) {
-				editor.replaceBlocks(safeIds, [blockData]);
-			} else {
-				editor.insertBlocks([blockData]);
+				// Fallback to insert at current position
+				editor.insertBlocks([blockSpec]);
+			} catch (error) {
+				console.error("Banner insertion failed:", error);
+				// Final fallback - try to insert at the end
+				try {
+					const currentBlocks = editor.document || [];
+					editor.replaceBlocks([], [blockSpec]);
+				} catch {
+					// If all else fails, silently fail
+				}
 			}
 		};
 		onProvideInsert({ insertBanner });
@@ -271,7 +282,11 @@ function DocumentEditor({ docId, onProvideInsert }: { docId: string; onProvideIn
 			aliases: ["custom", "banner"],
 			subtext: "Insert a banner",
 			onItemClick: () => {
-				editor.insertBlocks([{ type: "banner", content: [{ type: "text", text: "Custom block" }] }]);
+				try {
+					editor.insertBlocks([{ type: "banner", content: "Custom block" }]);
+				} catch (error) {
+					console.error("Slash menu banner insertion failed:", error);
+				}
 			},
 		});
 	}, [(sync as any)?.editor]);
@@ -303,9 +318,13 @@ function DocumentEditor({ docId, onProvideInsert }: { docId: string; onProvideIn
 			aliases: ["custom", "banner"],
 			subtext: "Insert a banner",
 			onItemClick: (editor: any) => {
-				editor.insertBlocks([{ type: "banner", content: "Custom block" }]);
-				editor.suggestionMenus?.clearQuery?.();
-				editor.suggestionMenus?.closeMenu?.();
+				try {
+					editor.insertBlocks([{ type: "banner", content: "Custom block" }]);
+					editor.suggestionMenus?.clearQuery?.();
+					editor.suggestionMenus?.closeMenu?.();
+				} catch (error) {
+					console.error("Suggestion menu banner insertion failed:", error);
+				}
 			},
 		}];
 		const all = [...defaults, ...custom];

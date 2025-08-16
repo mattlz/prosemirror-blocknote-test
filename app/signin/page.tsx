@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,9 +13,9 @@ export default function SignInPage(): ReactElement {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	if (token) {
-		router.replace("/docs");
-	}
+	useEffect(() => {
+		if (token) router.replace("/docs");
+	}, [token, router]);
 
 	const onSubmit = async (): Promise<void> => {
 		setLoading(true);
