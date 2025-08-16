@@ -11,6 +11,8 @@ import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
+import type { DefaultSuggestionItem } from "@blocknote/core/types/src/extensions/SuggestionMenu/DefaultSuggestionItem";
+import { insertOrUpdateBlock } from "@blocknote/core/types/src/extensions/SuggestionMenu/getDefaultSlashMenuItems";
 
 function Sidebar(props: { documentId: string | null; activePageDocId: string | null; onSelect: (docId: string) => void; onCreatePage: () => void }): ReactElement {
 	const pages = useQuery(
@@ -185,9 +187,32 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 		editorOptions: {
 			_extensions: {
 				remoteCursors: () => ({ plugin: remoteCursorPlugin(() => presence as any) }),
+				customSlash: (editor: BlockNoteEditor) => ({
+					plugin: new Plugin({
+						props: {
+							handleKeyDown(view, event) {
+								if (event.key !== " " && event.key !== "Enter") return false;
+								const { state, dispatch } = view;
+								const sel: any = state.selection;
+								if (!sel || !sel.$from || !sel.$from.parent || !sel.$from.parent.isTextblock) return false;
+								const prefix = sel.$from.parent.textBetween(0, sel.$from.parentOffset, undefined, "\uFFFC");
+								if (prefix.trim() !== "/custom") return false;
+								const startPos = sel.$from.start();
+								const schema: any = (editor as any).pmSchema;
+								const paragraph = schema.nodes.paragraph.create({ backgroundColor: "#FEF3C7", textColor: "#92400E" }, schema.text("Custom block"));
+								let tr = state.tr.delete(startPos, sel.$from.pos);
+								tr = tr.insert(startPos, paragraph);
+								dispatch(tr);
+								return true;
+							},
+						},
+					})
+				}),
 			},
 		},
 	});
+
+	// remove private suggestion menu edits
 
 	const token = useAuthToken();
 	const heartbeat = useMutation(api.presence.heartbeat);
