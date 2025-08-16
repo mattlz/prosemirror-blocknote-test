@@ -81,7 +81,7 @@ export const reorder = mutation({
 		if (!before) return;
 		const prev = await ctx.db
 			.query("pages")
-			.withIndex("by_document_order", q => q.eq("documentId", before.documentId))
+			.withIndex("by_document_order", q => q.eq("documentId", before.documentId).lt("order", before.order))
 			.order("desc")
 			.first();
 		const newOrder = prev ? (prev.order + before.order) / 2 : before.order - 1;

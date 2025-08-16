@@ -72,14 +72,23 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 									await renamePage({ pageId: p._id, title });
 									setOpenMenuId(null);
 								}}>Rename</button>
-								<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
-									if (idx > 0) await reorderPage({ pageId: p._id, beforePageId: sortedPages[idx - 1]._id });
-									setOpenMenuId(null);
-								}}>Move Up</button>
-								<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
-									if (idx < sortedPages.length - 1) await reorderPage({ pageId: p._id, beforePageId: sortedPages[idx + 1]._id });
-									setOpenMenuId(null);
-								}}>Move Down</button>
+								{idx > 0 ? (
+									<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+										await reorderPage({ pageId: p._id, beforePageId: sortedPages[idx - 1]._id });
+										setOpenMenuId(null);
+									}}>Move Up</button>
+								) : null}
+								{idx < sortedPages.length - 1 ? (
+									<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+										const targetBefore = idx + 2 < sortedPages.length ? sortedPages[idx + 2]._id : undefined;
+										if (targetBefore) {
+											await reorderPage({ pageId: p._id, beforePageId: targetBefore });
+										} else {
+											await reorderPage({ pageId: p._id } as any); // move to end
+										}
+										setOpenMenuId(null);
+									}}>Move Down</button>
+								) : null}
 								<button className="block w-full rounded px-2 py-1 text-left text-sm text-red-600 hover:bg-red-50" onClick={async () => {
 									if (confirm("Delete page?")) {
 										await removePage({ pageId: p._id });
@@ -263,31 +272,21 @@ function DocumentEditor({ docId, onProvideInsert }: { docId: string; onProvideIn
 		if (!editor) return;
 		const insertBanner = (): void => {
 			try {
-				// Focus the editor first
-				if (typeof editor.focus === "function") editor.focus();
-				
-				// Use the same approach as the working slash command
-				const pmView = (editor as any).pmView;
-				if (!pmView) {
-					console.error("ProseMirror view not available");
-					return;
+				// Focus editor first
+				if (editor && typeof editor.focus === "function") {
+					editor.focus();
 				}
 				
-				const { state, dispatch } = pmView;
-				const schema = (editor as any).pmSchema; // Use pmSchema like the working slash command
-				
-				// Create banner node exactly like the working slash command does
-				const node = schema.nodes.banner?.create({}, schema.text("Custom block"));
-				if (!node) {
-					console.error("Banner node creation failed");
-					return;
+				// Use BlockNote's proper insertBlock API (singular, not plural)
+				if (editor && typeof editor.insertBlock === "function") {
+					editor.insertBlock({
+						type: "banner",
+						content: "Custom block"
+					});
+				} else {
+					console.error("Editor or insertBlock method not available");
+					console.log("Available editor methods:", editor ? Object.getOwnPropertyNames(editor) : "no editor");
 				}
-				
-				// Insert at current cursor position
-				const currentPos = state.selection.head;
-				const tr = state.tr.insert(currentPos, node);
-				dispatch(tr);
-				
 			} catch (error) {
 				console.error("Banner insertion failed:", error);
 			}
