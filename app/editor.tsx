@@ -111,6 +111,15 @@ function PresenceAvatarsInner({ docId, className }: { docId: string; className?:
 	);
 }
 
+function CommentsSidebar(): ReactElement {
+	return (
+		<aside className="w-80 shrink-0 border-l bg-white p-4">
+			<div className="text-base font-semibold">Comments <span className="text-neutral-400">»</span></div>
+			<div className="mt-4 text-sm text-neutral-500">No comments yet.</div>
+		</aside>
+	);
+}
+
 const remoteCursorKey = new PluginKey("remoteCursors");
 
 function remoteCursorPlugin(getPresence: () => Array<{ userId: string; name: string; color: string; cursor: string }>) {
@@ -255,6 +264,7 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 	const [documentId, setDocumentId] = useState<string | null>(props.initialDocumentId ?? null);
 	const [pageDocId, setPageDocId] = useState<string | null>(null);
 	const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+	const [commentsOpen, setCommentsOpen] = useState<boolean>(false);
 	const createDocument = useMutation(api.documents.create);
 	const createPage = useMutation(api.pages.create);
 
@@ -293,12 +303,13 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 				<button className="inline-flex h-8 items-center rounded-md border px-2 text-sm" onClick={() => { window.location.href = "/docs"; }}>← All docs</button>
 				<button className="inline-flex h-8 items-center rounded-md border px-2 text-sm" onClick={() => setSidebarOpen((v) => !v)}>{sidebarOpen ? "Hide sidebar" : "Show sidebar"}</button>
 				<div className="text-lg font-semibold">{documentTitle}</div>
-				<div className="ml-auto">
+				<div className="ml-auto flex items-center gap-2">
+					<button aria-label="Comments" className={["inline-flex h-8 w-8 items-center justify-center rounded-md border", commentsOpen ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={() => setCommentsOpen((v) => !v)}>💬</button>
 					<PresenceAvatars docId={pageDocId} />
 				</div>
 			</div>
 
-			{/* Body: sidebar + editor */}
+			{/* Body: sidebar + editor + comments */}
 			<div className="flex">
 				{sidebarOpen ? (
 					<Sidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} onCollapse={() => setSidebarOpen(false)} />
@@ -311,12 +322,13 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 					) : (
 						<div className="p-6">
 							<div className="mx-auto w-full max-w-[1200px]">
-								<h1 className="mb-6 mt-6 text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
+								<h1 className="mb-6 mt-6 pl-12 text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
 								<DocumentEditor docId={pageDocId} />
 							</div>
 						</div>
 					)}
 				</div>
+				{commentsOpen ? <CommentsSidebar /> : null}
 			</div>
 		</div>
 	);
