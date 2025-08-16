@@ -45,9 +45,12 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 	const pages = useQuery(
 		props.documentId ? api.pages.list : (api.documents.list as any),
 		props.documentId ? ({ documentId: props.documentId as any, parentPageId: undefined as any } as any) : ({} as any)
-	) ?? [];
-	useMutation(api.pages.rename);
-	useMutation(api.pages.remove);
+	);
+	const renamePage = useMutation(api.pages.rename);
+	const reorderPage = useMutation(api.pages.reorder);
+	const removePage = useMutation(api.pages.remove);
+	const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+	const sortedPages: any[] = Array.isArray(pages) ? [...(pages as any[])].sort((a: any, b: any) => a.order - b.order) : [];
 	return (
 		<div className="w-64 bg-white p-2">
 			<div className="flex items-center justify-between px-1 py-2">
@@ -55,11 +58,38 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 				<button aria-label="Collapse sidebar" className="inline-flex h-7 w-7 items-center justify-center rounded-md border text-xs" onClick={props.onCollapse}>≡</button>
 			</div>
 			<div className="flex flex-col gap-1">
-				{(props.documentId ? pages : []).sort((a: any, b: any) => a.order - b.order).map((p: any) => (
-					<button key={p._id} onClick={() => props.onSelect(p.docId)} className={["flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-neutral-50", props.activePageDocId === p.docId ? "bg-neutral-100" : ""].join(" ")}>
-						<span className="text-lg">{p.icon ?? ""}</span>
-						<span className="truncate">{p.title || "Untitled"}</span>
-					</button>
+				{sortedPages.map((p: any, idx: number) => (
+					<div key={p._id} className={["group relative flex items-center gap-2 rounded-md px-2 py-1", props.activePageDocId === p.docId ? "bg-neutral-100" : "hover:bg-neutral-50"].join(" ")}>
+						<button onClick={() => props.onSelect(p.docId)} className="flex flex-1 items-center gap-2 text-left text-sm">
+							<span className="text-lg">{p.icon ?? ""}</span>
+							<span className="truncate">{p.title || "Untitled"}</span>
+						</button>
+						<button aria-label="Page menu" className="invisible h-6 w-6 rounded-md border text-xs group-hover:visible" onClick={() => setOpenMenuId(openMenuId === String(p._id) ? null : String(p._id))}>⋯</button>
+						{openMenuId === String(p._id) ? (
+							<div className="absolute right-2 top-7 z-20 w-40 rounded-md border bg-white p-1 shadow-md">
+								<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+									const title = prompt("Rename page", p.title) || p.title;
+									await renamePage({ pageId: p._id, title });
+									setOpenMenuId(null);
+								}}>Rename</button>
+								<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+									if (idx > 0) await reorderPage({ pageId: p._id, beforePageId: sortedPages[idx - 1]._id });
+									setOpenMenuId(null);
+								}}>Move Up</button>
+								<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+									if (idx < sortedPages.length - 1) await reorderPage({ pageId: p._id, beforePageId: sortedPages[idx + 1]._id });
+									setOpenMenuId(null);
+								}}>Move Down</button>
+								<button className="block w-full rounded px-2 py-1 text-left text-sm text-red-600 hover:bg-red-50" onClick={async () => {
+									if (confirm("Delete page?")) {
+										await removePage({ pageId: p._id });
+										if (props.activePageDocId === p.docId) props.onSelect("");
+									}
+									setOpenMenuId(null);
+								}}>Delete Page</button>
+							</div>
+						) : null}
+					</div>
 				))}
 			</div>
 			<button className="mt-2 w-full px-2 py-1 text-left text-sm text-neutral-600 hover:text-neutral-900" onClick={props.onCreatePage} disabled={!props.documentId}>+ New page</button>
@@ -233,39 +263,33 @@ function DocumentEditor({ docId, onProvideInsert }: { docId: string; onProvideIn
 		if (!editor) return;
 		const insertBanner = (): void => {
 			try {
+				// Focus the editor first
 				if (typeof editor.focus === "function") editor.focus();
-				else if ((editor as any).pmView?.focus) (editor as any).pmView.focus();
-			} catch {}
-			
-			// Use BlockNote's proper block structure without manual ID
-			const blockSpec = {
-				type: "banner",
-				content: "Custom block"
-			};
-			
-			try {
-				// Try to get current selection and replace if possible
-				const sel = editor.getSelection?.();
-				if (sel?.blocks && Array.isArray(sel.blocks) && sel.blocks.length > 0) {
-					const validBlocks = sel.blocks.filter((b: any) => b && b.id);
-					if (validBlocks.length > 0) {
-						const ids = validBlocks.map((b: any) => b.id);
-						editor.replaceBlocks(ids, [blockSpec]);
-						return;
-					}
+				
+				// Use the same approach as the working slash command
+				const pmView = (editor as any).pmView;
+				if (!pmView) {
+					console.error("ProseMirror view not available");
+					return;
 				}
 				
-				// Fallback to insert at current position
-				editor.insertBlocks([blockSpec]);
+				const { state, dispatch } = pmView;
+				const schema = (editor as any).pmSchema; // Use pmSchema like the working slash command
+				
+				// Create banner node exactly like the working slash command does
+				const node = schema.nodes.banner?.create({}, schema.text("Custom block"));
+				if (!node) {
+					console.error("Banner node creation failed");
+					return;
+				}
+				
+				// Insert at current cursor position
+				const currentPos = state.selection.head;
+				const tr = state.tr.insert(currentPos, node);
+				dispatch(tr);
+				
 			} catch (error) {
 				console.error("Banner insertion failed:", error);
-				// Final fallback - try to insert at the end
-				try {
-					const currentBlocks = editor.document || [];
-					editor.replaceBlocks([], [blockSpec]);
-				} catch {
-					// If all else fails, silently fail
-				}
 			}
 		};
 		onProvideInsert({ insertBanner });
@@ -377,28 +401,20 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 	const currentPageTitle = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId)?.title ?? "Untitled", [pages, pageDocId]);
 	const currentPage = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId), [pages, pageDocId]);
 
-	// Preselect first page if none selected
+	// Track last documentId to prevent repeated auto-creation across opens
+	const lastDocIdRef = useRef<string | null>(null);
+
+	// Preselect first page only after pages have loaded
 	useEffect(() => {
 		if (!documentId) return;
+		if (!Array.isArray(pages)) return; // still loading
 		if (pageDocId) return;
 		const first = (pages as any[]).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
 		if (first?.docId) setPageDocId(first.docId);
 	}, [documentId, pageDocId, pages]);
 
-	// Auto-create a first page when opening a new document without pages
-	const autoCreatedRef = useRef(false);
-	useEffect(() => {
-		if (!documentId) return;
-		if (pageDocId) return;
-		if (autoCreatedRef.current) return;
-		const hasPages = Array.isArray(pages) && (pages as any[]).length > 0;
-		if (!hasPages) {
-			autoCreatedRef.current = true;
-			createPage({ documentId: documentId as any, title: "Untitled" })
-				.then(({ docId }) => setPageDocId(docId))
-				.catch(() => { autoCreatedRef.current = false; });
-		}
-	}, [documentId, pageDocId, pages, createPage]);
+	// Note: We intentionally do NOT auto-create pages on open.
+	// First page creation happens only in onCreateDocument for a smoother onboarding without surprises.
 
 	return (
 		<div className="min-h-screen w-full overflow-hidden">
