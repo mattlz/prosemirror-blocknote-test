@@ -13,6 +13,8 @@ import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import type { DefaultSuggestionItem } from "@blocknote/core/types/src/extensions/SuggestionMenu/DefaultSuggestionItem";
 import { insertOrUpdateBlock } from "@blocknote/core/types/src/extensions/SuggestionMenu/getDefaultSlashMenuItems";
+import { bannerSchema } from "./blocks/banner";
+import { SuggestionMenuController } from "@blocknote/react";
 
 function Sidebar(props: { documentId: string | null; activePageDocId: string | null; onSelect: (docId: string) => void; onCreatePage: () => void }): ReactElement {
 	const pages = useQuery(
@@ -123,11 +125,16 @@ function DebugTopBar(props: {
 }
 
 function PresenceAvatars(props: { docId: string | null }): ReactElement {
-	const presence = props.docId ? useQuery(api.presence.list, { docId: props.docId }) ?? [] : [];
+	if (!props.docId) return <div style={{ height: 0 }} /> as any;
+	return <PresenceAvatarsInner docId={props.docId} /> as any;
+}
+
+function PresenceAvatarsInner({ docId }: { docId: string }): ReactElement {
+	const presence = useQuery(api.presence.list, { docId }) ?? [];
 	return (
 		<div style={{ display: "flex", gap: 8, padding: "8px 12px" }}>
-			{presence.map(p => (
-				<div key={p.userId} title={p.name} style={{ width: 24, height: 24, borderRadius: 12, background: p.color, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
+			{presence.map((p, idx) => (
+				<div key={p.userId ?? idx} title={p.name} style={{ width: 24, height: 24, borderRadius: 12, background: p.color, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
 					{p.name.slice(0, 1).toUpperCase()}
 				</div>
 			))}
@@ -185,6 +192,7 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 	const sync = useBlockNoteSync<BlockNoteEditor>(api.example, docId, {
 		snapshotDebounceMs: 1000,
 		editorOptions: {
+			schema: (bannerSchema as any),
 			_extensions: {
 				remoteCursors: () => ({ plugin: remoteCursorPlugin(() => presence as any) }),
 				customSlash: (editor: BlockNoteEditor) => ({
@@ -196,12 +204,13 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 								const sel: any = state.selection;
 								if (!sel || !sel.$from || !sel.$from.parent || !sel.$from.parent.isTextblock) return false;
 								const prefix = sel.$from.parent.textBetween(0, sel.$from.parentOffset, undefined, "\uFFFC");
-								if (prefix.trim() !== "/custom") return false;
+								if (prefix.trim() !== "/banner") return false;
 								const startPos = sel.$from.start();
 								const schema: any = (editor as any).pmSchema;
-								const paragraph = schema.nodes.paragraph.create({ backgroundColor: "#FEF3C7", textColor: "#92400E" }, schema.text("Custom block"));
+								const node = schema.nodes.banner?.create({}, schema.text("Custom block"));
+								if (!node) return false;
 								let tr = state.tr.delete(startPos, sel.$from.pos);
-								tr = tr.insert(startPos, paragraph);
+								tr = tr.insert(startPos, node);
 								dispatch(tr);
 								return true;
 							},
@@ -211,6 +220,22 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 			},
 		},
 	});
+
+	// Add a visible slash menu item for the banner block
+	useEffect(() => {
+		const editor = (sync as any)?.editor as any;
+		if (!editor?.suggestionMenus) return;
+		const items = editor.suggestionMenus.items || [];
+		if (items.some((i: any) => i?.title === "Custom block")) return;
+		items.push({
+			title: "Custom block",
+			aliases: ["custom", "banner"],
+			subtext: "Insert a banner",
+			onItemClick: () => {
+				editor.insertBlocks([{ type: "banner", content: [{ type: "text", text: "Custom block" }] }]);
+			},
+		});
+	}, [(sync as any)?.editor]);
 
 	// remove private suggestion menu edits
 
@@ -231,9 +256,28 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 
 	if ((sync as any)?.isLoading) return <p style={{ padding: 16 }}>Loading…</p> as any;
 	if (!(sync as any)?.editor) return <div style={{ padding: 16 }}>Editor not ready</div> as any;
+	const editorInst: any = (sync as any).editor;
+	const getItems = async (query: string) => {
+		const defaults = (await import("@blocknote/react")).getDefaultReactSlashMenuItems(editorInst);
+		const custom = [{
+			title: "Custom block",
+			aliases: ["custom", "banner"],
+			subtext: "Insert a banner",
+			onItemClick: (editor: any) => {
+				editor.insertBlocks([{ type: "banner", content: "Custom block" }]);
+				editor.suggestionMenus?.clearQuery?.();
+				editor.suggestionMenus?.closeMenu?.();
+			},
+		}];
+		const all = [...defaults, ...custom];
+		const { filterSuggestionItems } = await import("@blocknote/core");
+		return filterSuggestionItems(all as any, query) as any;
+	};
 	return (
 		<div style={{ padding: 16 }}>
-			<BlockNoteView editor={(sync as any).editor} />
+			<BlockNoteView editor={editorInst}>
+				<SuggestionMenuController triggerCharacter="/" getItems={getItems} />
+			</BlockNoteView>
 		</div>
 	);
 }
