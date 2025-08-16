@@ -24,24 +24,16 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 	const renamePage = useMutation(api.pages.rename);
 	const removePage = useMutation(api.pages.remove);
 	return (
-		<div style={{ width: 260, borderRight: "1px solid #e5e7eb", padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-			<div style={{ display: "flex", gap: 8 }}>
-				<button onClick={props.onCreatePage} disabled={!props.documentId}>+ Page</button>
+		<div className="w-64 border-r bg-white p-2">
+			<div className="flex items-center justify-between px-1 py-2">
+				<span className="text-xs font-semibold text-neutral-500">Pages</span>
+				<button className="inline-flex h-7 items-center rounded-md border px-2 text-xs" onClick={props.onCreatePage} disabled={!props.documentId}>+ New</button>
 			</div>
-			<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+			<div className="flex flex-col gap-1">
 				{(props.documentId ? pages : []).sort((a: any, b: any) => a.order - b.order).map((p: any) => (
-					<div key={p._id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-						<button onClick={() => props.onSelect(p.docId)} style={{ flex: 1, textAlign: "left", background: props.activePageDocId === p.docId ? "#eef2ff" : undefined }}>
-							{p.title || "Untitled"}
-						</button>
-						<button title="Rename" onClick={async () => {
-							const title = prompt("Rename page", p.title) || p.title;
-							await renamePage({ pageId: p._id, title });
-						}}>✎</button>
-						<button title="Delete" onClick={async () => {
-							if (confirm("Delete page?")) await removePage({ pageId: p._id });
-						}}>🗑</button>
-					</div>
+					<button key={p._id} onClick={() => props.onSelect(p.docId)} className={["flex items-center justify-between rounded-md px-2 py-1 text-left text-sm hover:bg-neutral-50", props.activePageDocId === p.docId ? "bg-neutral-100" : ""].join(" ")}>
+						<span className="truncate">{p.title || "Untitled"}</span>
+					</button>
 				))}
 			</div>
 		</div>
@@ -282,8 +274,8 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 	);
 }
 
-function EditorBody(): ReactElement {
-	const [documentId, setDocumentId] = useState<string | null>(null);
+function EditorBody(props: { initialDocumentId?: string | null }): ReactElement {
+	const [documentId, setDocumentId] = useState<string | null>(props.initialDocumentId ?? null);
 	const [pageDocId, setPageDocId] = useState<string | null>(null);
 	const createDocument = useMutation(api.documents.create);
 	const createPage = useMutation(api.pages.create);
@@ -302,30 +294,48 @@ function EditorBody(): ReactElement {
 		setPageDocId(docId);
 	};
 
+	// Load lists to compute titles and preselect first page
+	const pages = useQuery(documentId ? api.pages.list : (api.documents.list as any), documentId ? ({ documentId: documentId as any, parentPageId: undefined as any } as any) : ({} as any)) ?? [];
+	const documents = useQuery(api.documents.list, {}) ?? [];
+	const documentTitle = useMemo(() => (documents as any[]).find((d) => d._id === documentId)?.title ?? "All docs", [documents, documentId]);
+	const currentPageTitle = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId)?.title ?? "Untitled", [pages, pageDocId]);
+
+	// Preselect first page if none selected
+	useEffect(() => {
+		if (!documentId) return;
+		if (pageDocId) return;
+		const first = (pages as any[]).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+		if (first?.docId) setPageDocId(first.docId);
+	}, [documentId, pageDocId, pages]);
+
 	return (
-		<div style={{ display: "flex", minHeight: "100vh" }}>
-			<div style={{ width: 260, display: "flex", flexDirection: "column" }}>
-				<DocumentPicker documentId={documentId} onSelect={(id) => { setDocumentId(id || null); setPageDocId(null); }} onCreate={onCreateDocument} />
-				<Sidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} />
-			</div>
-			<div style={{ flex: 1 }}>
-				<DebugTopBar pageDocId={pageDocId} isLoading={false} onNewPage={onCreatePage} />
+		<div className="flex min-h-screen">
+			<Sidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} />
+			<div className="flex-1">
+				<div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-white px-4 py-2">
+					<button className="inline-flex h-8 items-center rounded-md border px-2 text-sm" onClick={() => { window.location.href = "/docs"; }}>← Back</button>
+					<div className="text-lg font-semibold">{documentTitle}</div>
+					<div className="ml-auto"><AuthControls /></div>
+				</div>
 				<PresenceAvatars docId={pageDocId} />
 				{!pageDocId ? (
-					<div style={{ padding: 16 }}>{documentId ? "Select or create a page" : "Select or create a document"}</div>
+					<div className="p-6 text-neutral-600">{documentId ? "Select or create a page" : "No document selected"}</div>
 				) : (
-					<DocumentEditor docId={pageDocId} />
+					<div className="flex flex-col gap-4 p-6">
+						<h1 className="text-3xl font-bold tracking-tight">{currentPageTitle || "Untitled"}</h1>
+						<div className="rounded-lg border">
+							<DocumentEditor docId={pageDocId} />
+						</div>
+					</div>
 				)}
 			</div>
 		</div>
 	);
 }
 
-export default function Editor(): ReactElement {
+export default function Editor(props: { documentId?: string | null }): ReactElement {
 	return (
-		<Providers>
-			<EditorBody />
-		</Providers>
+		<EditorBody initialDocumentId={props.documentId ?? null} />
 	);
 }
 
