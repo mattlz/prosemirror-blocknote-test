@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
-import { Providers } from "./providers";
 import { useBlockNoteSync } from "@convex-dev/prosemirror-sync/blocknote";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
@@ -16,18 +15,18 @@ import { insertOrUpdateBlock } from "@blocknote/core/types/src/extensions/Sugges
 import { bannerSchema } from "./blocks/banner";
 import { SuggestionMenuController } from "@blocknote/react";
 
-function Sidebar(props: { documentId: string | null; activePageDocId: string | null; onSelect: (docId: string) => void; onCreatePage: () => void }): ReactElement {
+function Sidebar(props: { documentId: string | null; activePageDocId: string | null; onSelect: (docId: string) => void; onCreatePage: () => void } & { onCollapse: () => void }): ReactElement {
 	const pages = useQuery(
 		props.documentId ? api.pages.list : (api.documents.list as any),
 		props.documentId ? ({ documentId: props.documentId as any, parentPageId: undefined as any } as any) : ({} as any)
 	) ?? [];
-	const renamePage = useMutation(api.pages.rename);
-	const removePage = useMutation(api.pages.remove);
+	useMutation(api.pages.rename);
+	useMutation(api.pages.remove);
 	return (
-		<div className="w-64 border-r bg-white p-2">
+		<div className="w-64 bg-white p-2">
 			<div className="flex items-center justify-between px-1 py-2">
 				<span className="text-xs font-semibold text-neutral-500">Pages</span>
-				<button className="inline-flex h-7 items-center rounded-md border px-2 text-xs" onClick={props.onCreatePage} disabled={!props.documentId}>+ New</button>
+				<button aria-label="Collapse sidebar" className="inline-flex h-7 w-7 items-center justify-center rounded-md border text-xs" onClick={props.onCollapse}>≡</button>
 			</div>
 			<div className="flex flex-col gap-1">
 				{(props.documentId ? pages : []).sort((a: any, b: any) => a.order - b.order).map((p: any) => (
@@ -36,6 +35,7 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 					</button>
 				))}
 			</div>
+			<button className="mt-2 w-full px-2 py-1 text-left text-sm text-neutral-600 hover:text-neutral-900" onClick={props.onCreatePage} disabled={!props.documentId}>+ New page</button>
 		</div>
 	);
 }
@@ -88,45 +88,22 @@ function DocumentPicker(props: { documentId: string | null; onSelect: (id: strin
 	);
 }
 
-function DebugTopBar(props: {
-	pageDocId: string | null;
-	isLoading: boolean;
-	onNewPage: () => void;
-}): ReactElement {
-	return (
-		<div style={{
-			display: "flex",
-			alignItems: "center",
-			gap: 12,
-			padding: "8px 12px",
-			borderBottom: "1px solid #e5e7eb",
-			position: "sticky",
-			top: 0,
-			background: "white",
-			zIndex: 10,
-		}}>
-			<strong>Convex x BlockNote</strong>
-			<span style={{ color: "#6b7280" }}>Page docId:</span>
-			<code>{props.pageDocId ?? "—"}</code>
-			<span style={{ color: "#6b7280" }}>Status:</span>
-			<code>{props.isLoading ? "Loading" : "Ready"}</code>
-			<button onClick={props.onNewPage} style={{ marginLeft: "auto" }}>New Page</button>
-			<AuthControls />
-		</div>
-	);
-}
-
-function PresenceAvatars(props: { docId: string | null }): ReactElement {
+function PresenceAvatars(props: { docId: string | null; className?: string }): ReactElement {
 	if (!props.docId) return <div style={{ height: 0 }} /> as any;
-	return <PresenceAvatarsInner docId={props.docId} /> as any;
+	return <PresenceAvatarsInner docId={props.docId} className={props.className} /> as any;
 }
 
-function PresenceAvatarsInner({ docId }: { docId: string }): ReactElement {
+function PresenceAvatarsInner({ docId, className }: { docId: string; className?: string }): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
 	return (
-		<div style={{ display: "flex", gap: 8, padding: "8px 12px" }}>
+		<div className={["flex items-center -space-x-2", className].filter(Boolean).join(" ")}> 
 			{presence.map((p, idx) => (
-				<div key={p.userId ?? idx} title={p.name} style={{ width: 24, height: 24, borderRadius: 12, background: p.color, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
+				<div
+					key={p.userId ?? idx}
+					title={p.name}
+					className="relative inline-flex h-7 w-7 items-center justify-center rounded-full ring-2 ring-white text-[11px] font-medium text-white"
+					style={{ background: (p as any).color }}
+				>
 					{p.name.slice(0, 1).toUpperCase()}
 				</div>
 			))}
@@ -266,7 +243,7 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 		return filterSuggestionItems(all as any, query) as any;
 	};
 	return (
-		<div style={{ padding: 16 }}>
+		<div className="mt-4">
 			<BlockNoteView editor={editorInst}>
 				<SuggestionMenuController triggerCharacter="/" getItems={getItems} />
 			</BlockNoteView>
@@ -277,6 +254,7 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 function EditorBody(props: { initialDocumentId?: string | null }): ReactElement {
 	const [documentId, setDocumentId] = useState<string | null>(props.initialDocumentId ?? null);
 	const [pageDocId, setPageDocId] = useState<string | null>(null);
+	const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
 	const createDocument = useMutation(api.documents.create);
 	const createPage = useMutation(api.pages.create);
 
@@ -309,25 +287,36 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 	}, [documentId, pageDocId, pages]);
 
 	return (
-		<div className="flex min-h-screen">
-			<Sidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} />
-			<div className="flex-1">
-				<div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-white px-4 py-2">
-					<button className="inline-flex h-8 items-center rounded-md border px-2 text-sm" onClick={() => { window.location.href = "/docs"; }}>← Back</button>
-					<div className="text-lg font-semibold">{documentTitle}</div>
-					<div className="ml-auto"><AuthControls /></div>
+		<div className="min-h-screen w-full overflow-hidden">
+			{/* Top bar */}
+			<div className="sticky top-0 z-10 flex w-full items-center gap-3 border-b bg-white px-4 py-2">
+				<button className="inline-flex h-8 items-center rounded-md border px-2 text-sm" onClick={() => { window.location.href = "/docs"; }}>← All docs</button>
+				<button className="inline-flex h-8 items-center rounded-md border px-2 text-sm" onClick={() => setSidebarOpen((v) => !v)}>{sidebarOpen ? "Hide sidebar" : "Show sidebar"}</button>
+				<div className="text-lg font-semibold">{documentTitle}</div>
+				<div className="ml-auto">
+					<PresenceAvatars docId={pageDocId} />
 				</div>
-				<PresenceAvatars docId={pageDocId} />
-				{!pageDocId ? (
-					<div className="p-6 text-neutral-600">{documentId ? "Select or create a page" : "No document selected"}</div>
+			</div>
+
+			{/* Body: sidebar + editor */}
+			<div className="flex">
+				{sidebarOpen ? (
+					<Sidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} onCollapse={() => setSidebarOpen(false)} />
 				) : (
-					<div className="flex flex-col gap-4 p-6">
-						<h1 className="text-3xl font-bold tracking-tight">{currentPageTitle || "Untitled"}</h1>
-						<div className="rounded-lg border">
-							<DocumentEditor docId={pageDocId} />
-						</div>
-					</div>
+					<div className="w-3 shrink-0" />
 				)}
+				<div className="flex-1">
+					{!pageDocId ? (
+						<div className="p-6 text-neutral-600">{documentId ? "Select or create a page" : "No document selected"}</div>
+					) : (
+						<div className="p-6">
+							<div className="mx-auto w-full max-w-[1200px]">
+								<h1 className="mb-6 mt-6 text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
+								<DocumentEditor docId={pageDocId} />
+							</div>
+						</div>
+					)}
+				</div>
 			</div>
 		</div>
 	);

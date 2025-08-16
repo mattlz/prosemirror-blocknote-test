@@ -3,7 +3,7 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Jotion",
+  title: "Collab Doc Editor Example",
   description: "Docs with Convex + BlockNote",
 };
 
