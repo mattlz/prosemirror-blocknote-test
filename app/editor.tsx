@@ -277,16 +277,32 @@ function DocumentEditor({ docId, onProvideInsert }: { docId: string; onProvideIn
 					editor.focus();
 				}
 				
-				// Use BlockNote's proper insertBlock API (singular, not plural)
-				if (editor && typeof editor.insertBlock === "function") {
-					editor.insertBlock({
-						type: "banner",
-						content: "Custom block"
-					});
-				} else {
-					console.error("Editor or insertBlock method not available");
-					console.log("Available editor methods:", editor ? Object.getOwnPropertyNames(editor) : "no editor");
+				// Get current cursor position to use as reference block
+				const cursorPos = editor.getTextCursorPosition();
+				if (!cursorPos?.block) {
+					console.error("Could not get current block for insertion");
+					return;
 				}
+				
+				// Insert banner after the current block using BlockNote's insertBlocks API
+				editor.insertBlocks(
+					[{ type: "banner", content: "Custom block" }],
+					cursorPos.block.id,
+					"after"
+				);
+				
+				// Force editor to refresh/re-render
+				if (typeof editor.forceUpdate === "function") {
+					editor.forceUpdate();
+				} else if (typeof editor.refresh === "function") {
+					editor.refresh();
+				} else if ((editor as any).pmView?.dispatch) {
+					// Force ProseMirror view update
+					const pmView = (editor as any).pmView;
+					const tr = pmView.state.tr;
+					pmView.dispatch(tr);
+				}
+				
 			} catch (error) {
 				console.error("Banner insertion failed:", error);
 			}
