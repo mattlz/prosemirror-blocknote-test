@@ -34,4 +34,29 @@ export default defineSchema({
 	})
 		.index("by_doc", ["docId"]) 
 		.index("by_doc_user", ["docId", "userId"]),
+	comments: defineTable({
+		docId: v.string(),
+		blockId: v.string(),
+		threadId: v.string(),
+		content: v.string(),
+		authorId: v.string(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+		resolved: v.optional(v.boolean()),
+		parentCommentId: v.optional(v.id("comments")),
+	})
+		.index("by_doc", ["docId"])
+		.index("by_thread", ["threadId"])
+		.index("by_block", ["blockId"])
+		.index("by_doc_resolved", ["docId", "resolved"]),
+	commentThreads: defineTable({
+		id: v.string(),
+		docId: v.string(),
+		blockId: v.string(),
+		createdAt: v.number(),
+		resolved: v.optional(v.boolean()),
+		creatorId: v.optional(v.string()),
+	})
+		.index("by_doc", ["docId"]) 
+		.index("by_block", ["blockId"]),
 });

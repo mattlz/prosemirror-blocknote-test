@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
-import { useBlockNoteSync } from "@convex-dev/prosemirror-sync/blocknote";
+import { useTiptapSync } from "@convex-dev/prosemirror-sync/tiptap";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
 import "@blocknote/core/fonts/inter.css";
-import { BlockNoteEditor } from "@blocknote/core";
+import { BlockNoteEditor, nodeToBlock } from "@blocknote/core";
+import CommentsSidebar from "@/app/comments/comments-sidebar";
 import { api } from "@/convex/_generated/api";
 import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
@@ -12,6 +13,7 @@ import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import { ArrowLeft, MessageCircle, Plus, PanelLeftClose, PanelLeftOpen, SmilePlus, ChevronRight, ChevronDown } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
+import { ConvexThreadStore } from "@/app/comments/convex-thread-store";
 
 function IconPicker({ value, onChange }: { value?: string | null; onChange: (val: string | null) => void }): ReactElement {
 	const [open, setOpen] = useState(false);
@@ -281,14 +283,7 @@ function PresenceAvatarsInner({ docId, className }: { docId: string; className?:
 	);
 }
 
-function CommentsSidebar(): ReactElement {
-	return (
-		<aside className="w-80 shrink-0 border-l bg-white p-4">
-			<div className="text-base font-semibold">Comments <span className="text-neutral-400">»</span></div>
-			<div className="mt-4 text-sm text-neutral-500">No comments yet.</div>
-		</aside>
-	);
-}
+//
 
 const remoteCursorKey = new PluginKey("remoteCursors");
 
@@ -335,16 +330,70 @@ function remoteCursorPlugin(getPresence: () => Array<{ userId: string; name: str
 	});
 }
 
-function DocumentEditor({ docId }: { docId: string }): ReactElement {
+function DocumentEditor({ docId, onEditorReady }: { docId: string; onEditorReady?: (editor: BlockNoteEditor) => void }): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
-	const sync = useBlockNoteSync<BlockNoteEditor>(api.example, docId, {
-		snapshotDebounceMs: 1000,
-		editorOptions: {
+	const threadsForDoc = (useQuery(api.comments.listByDoc, { docId, includeResolved: true }) ?? []) as Array<{ thread: any; comments: any[] }>;
+
+	const presenceMap = useMemo(() => {
+		const map: Record<string, { name: string; color: string }> = {};
+		for (const p of presence as any[]) {
+			map[(p as any).userId] = { name: (p as any).name, color: (p as any).color };
+		}
+		return map;
+	}, [presence]);
+
+	const resolveUsers = async (userIds: string[]): Promise<Array<{ id: string; username: string; avatarUrl: string }>> => {
+		return userIds.map((id) => ({ id, username: presenceMap[id]?.name ?? "User", avatarUrl: "" }));
+	};
+
+	const createThreadMutation = useMutation(api.comments.createThread);
+	const addCommentMutation = useMutation(api.comments.createComment);
+	const updateCommentMutation = useMutation(api.comments.updateComment);
+	const deleteCommentMutation = useMutation(api.comments.deleteComment);
+	const resolveThreadMutation = useMutation(api.comments.resolveThread);
+
+	const threadStore = useMemo(() => new ConvexThreadStore(docId, {
+		userId: "current",
+		createThread: ({ docId: d, blockId, content }) => createThreadMutation({ docId: d, blockId: blockId ?? "", content }) as any,
+		createComment: ({ docId: d, blockId, threadId, content }) => addCommentMutation({ docId: d, blockId: blockId ?? "", threadId, content }) as any,
+		updateComment: ({ commentId, content }) => updateCommentMutation({ commentId: commentId as any, content }) as any,
+		deleteComment: ({ commentId }) => deleteCommentMutation({ commentId: commentId as any }) as any,
+		resolveThread: ({ threadId, resolved }) => resolveThreadMutation({ threadId, resolved }) as any,
+	}), [docId, createThreadMutation, addCommentMutation, updateCommentMutation, deleteCommentMutation, resolveThreadMutation]);
+
+	const tiptapSync = useTiptapSync(api.example, docId, { snapshotDebounceMs: 1000 });
+
+	const editorFromSync = useMemo(() => {
+		if (tiptapSync.initialContent === null) return null;
+		// Headless editor for PM->BlockNote conversion only (no comments in headless)
+		const headless = BlockNoteEditor.create({ resolveUsers, _headless: true });
+		const blocks: any[] = [];
+		const pmNode = headless.pmSchema.nodeFromJSON(tiptapSync.initialContent as any);
+		if ((pmNode as any).firstChild) {
+			(pmNode as any).firstChild.descendants((node: any) => {
+				blocks.push(nodeToBlock(node, headless.pmSchema));
+				return false;
+			});
+		}
+		return BlockNoteEditor.create({
+			resolveUsers,
+			comments: { threadStore: threadStore as any },
+			_tiptapOptions: {
+				extensions: [tiptapSync.extension],
+			},
 			_extensions: {
 				remoteCursors: () => ({ plugin: remoteCursorPlugin(() => presence as any) }),
 			},
-		},
-	});
+			initialContent: blocks.length > 0 ? blocks : undefined,
+		});
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [tiptapSync.initialContent, resolveUsers, threadStore, presence]);
+
+	const sync = useMemo(() => ({
+		editor: editorFromSync,
+		isLoading: tiptapSync.isLoading,
+		create: tiptapSync.create,
+	}), [editorFromSync, tiptapSync.isLoading, tiptapSync.create]);
 
 	const token = useAuthToken();
 	const heartbeat = useMutation(api.presence.heartbeat);
@@ -361,13 +410,62 @@ function DocumentEditor({ docId }: { docId: string }): ReactElement {
 		return () => { active = false; clearInterval(interval); };
 	}, [docId, heartbeat, token, (sync as any)?.editor]);
 
-	if ((sync as any)?.isLoading) return <p style={{ padding: 16 }}>Loading…</p> as any;
-	if (!(sync as any)?.editor) return <div style={{ padding: 16 }}>Editor not ready</div> as any;
-	const editorInst: any = (sync as any).editor;
-	
+	const editorInst: any = (sync as any)?.editor;
+	useEffect(() => {
+		if (onEditorReady && editorInst) onEditorReady(editorInst);
+	}, [editorInst, onEditorReady]);
+
+	const lastMarkedRef = useRef<Set<string>>(new Set());
+	useEffect(() => {
+		if (!editorInst) return;
+		const current = new Set<string>((threadsForDoc as any[]).map((t: any) => t.thread.blockId));
+		for (const oldId of Array.from(lastMarkedRef.current)) {
+			if (!current.has(oldId)) {
+				const trySelectors = [
+					`[data-id="${oldId}"]`,
+					`[data-block-id="${oldId}"]`,
+					`[data-node-id="${oldId}"]`,
+				];
+				for (const sel of trySelectors) {
+					const el = document.querySelector(sel) as HTMLElement | null;
+					if (el) {
+						el.classList.remove("ring-1", "ring-amber-400");
+						el.removeAttribute("data-has-comment");
+					}
+				}
+				lastMarkedRef.current.delete(oldId);
+			}
+		}
+		for (const id of Array.from(current)) {
+			const trySelectors = [
+				`[data-id="${id}"]`,
+				`[data-block-id="${id}"]`,
+				`[data-node-id="${id}"]`,
+			];
+			let el: HTMLElement | null = null;
+			for (const sel of trySelectors) {
+				el = document.querySelector(sel) as HTMLElement | null;
+				if (el) break;
+			}
+			if (el) {
+				el.classList.add("ring-1", "ring-amber-400");
+				el.setAttribute("data-has-comment", "1");
+				lastMarkedRef.current.add(id);
+			}
+		}
+		// Hydrate comment threads only after editor is ready
+		(threadStore as any).setThreadsFromConvex(threadsForDoc as any);
+	}, [threadsForDoc, threadStore, editorInst]);
+
 	return (
 		<div className="mt-4">
-			<BlockNoteView editor={editorInst} />
+			{(sync as any)?.isLoading ? (
+				<p style={{ padding: 16 }}>Loading…</p>
+			) : editorInst ? (
+				<BlockNoteView editor={editorInst} />
+			) : (
+				<div style={{ padding: 16 }}>Editor not ready</div>
+			)}
 		</div>
 	);
 }
@@ -378,9 +476,11 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 	const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
 	const [showOpenButton, setShowOpenButton] = useState<boolean>(false);
 	const [commentsOpen, setCommentsOpen] = useState<boolean>(false);
+	const editorRef = useRef<BlockNoteEditor | null>(null);
 	const createDocument = useMutation(api.documents.create);
 	const createPage = useMutation(api.pages.create);
 	const setIconMutation = useMutation(api.pages.setIcon);
+	const createThreadMutation = useMutation(api.comments.createThread);
 
 	const onCreateDocument = async (): Promise<void> => {
 		const title = prompt("New document title", "Untitled Document") || "Untitled Document";
@@ -477,12 +577,50 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 									}} />
 									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
 								</div>
-								<DocumentEditor docId={pageDocId} />
+								<DocumentEditor docId={pageDocId} onEditorReady={(e) => { editorRef.current = e; }} />
 							</div>
 						</div>
 					)}
 				</div>
-				{commentsOpen ? <CommentsSidebar /> : null}
+				{commentsOpen ? (
+					<CommentsSidebar 
+						docId={pageDocId ?? ""}
+						onJumpToBlock={(blockId: string) => {
+							const viewEl = document.querySelector(".bn-editor, [data-editor-root]") as HTMLElement | null;
+							const trySelectors = [
+								`[data-id="${blockId}"]`,
+								`[data-block-id="${blockId}"]`,
+								`[data-node-id="${blockId}"]`,
+							];
+							let el: Element | null = null;
+							for (const sel of trySelectors) {
+								el = (viewEl ?? document).querySelector(sel);
+								if (el) break;
+							}
+							if (el && "scrollIntoView" in el) {
+								(el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+								(el as HTMLElement).classList.add("ring-2", "ring-blue-500");
+								setTimeout(() => (el as HTMLElement).classList.remove("ring-2", "ring-blue-500"), 1500);
+							}
+						}}
+						onCreateThread={async (content: string) => {
+							if (!editorRef.current) return;
+							const getBlocks = (editorRef.current as any)?.getSelectedBlocks ?? (editorRef.current as any)?.blocksForSelection;
+							let selectedId: string | null = null;
+							try {
+								const blocks = getBlocks?.call(editorRef.current) ?? [];
+								if (Array.isArray(blocks) && blocks.length > 0) {
+									selectedId = (blocks[0] as any)?.id ?? null;
+								}
+							} catch {}
+							if (!selectedId) {
+								alert("Select a block to attach your comment to.");
+								return;
+							}
+							await createThreadMutation({ docId: pageDocId ?? "", blockId: selectedId, content }).catch(() => {});
+						}}
+					/>
+				) : null}
 			</div>
 		</div>
 	);
