@@ -2,14 +2,26 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useAuthToken } from "@convex-dev/auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function Home() {
   const token = useAuthToken();
   const router = useRouter();
+  const pathname = usePathname();
   useEffect(() => {
-    if (token) router.replace("/docs");
-  }, [token, router]);
+    if (!token) return;
+    if (pathname !== "/") return; // only act on root
+    try {
+      const last = localStorage.getItem("lastDocId");
+      if (last) {
+        router.replace(`/docs/${last}`);
+      } else {
+        router.replace("/docs");
+      }
+    } catch {
+      router.replace("/docs");
+    }
+  }, [token, router, pathname]);
   return (
     <div className="grid min-h-dvh place-items-center p-6">
       <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm">

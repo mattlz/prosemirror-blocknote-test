@@ -291,18 +291,6 @@ function DocumentEditor({ docId, onProvideInsert }: { docId: string; onProvideIn
 					"after"
 				);
 				
-				// Force editor to refresh/re-render
-				if (typeof editor.forceUpdate === "function") {
-					editor.forceUpdate();
-				} else if (typeof editor.refresh === "function") {
-					editor.refresh();
-				} else if ((editor as any).pmView?.dispatch) {
-					// Force ProseMirror view update
-					const pmView = (editor as any).pmView;
-					const tr = pmView.state.tr;
-					pmView.dispatch(tr);
-				}
-				
 			} catch (error) {
 				console.error("Banner insertion failed:", error);
 			}
