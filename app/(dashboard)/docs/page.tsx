@@ -1,13 +1,11 @@
-<<<<<<< Current (Your changes)
 "use client";
 import Link from "next/link";
 import { useMemo, useState, type ReactElement } from "react";
-import { useAuthToken, useAuthActions } from "@convex-dev/auth/react";
+import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 export default function DocsPage(): ReactElement {
-	const token = useAuthToken();
 	const { signOut } = useAuthActions();
 	const docs = useQuery(api.documents.list, {}) ?? [];
 	const create = useMutation(api.documents.create);
@@ -16,17 +14,6 @@ export default function DocsPage(): ReactElement {
 
 	const [filter, setFilter] = useState("");
 	const filtered = useMemo(() => docs.filter((d: any) => d.title.toLowerCase().includes(filter.toLowerCase())), [docs, filter]);
-
-	if (!token) {
-		return (
-			<div className="grid min-h-dvh place-items-center p-6">
-				<div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm text-center">
-					<p className="text-sm text-neutral-600">You must sign in to view documents.</p>
-					<Link className="mt-3 inline-flex h-9 items-center rounded-md bg-black px-3 text-white" href="/signin">Go to sign in</Link>
-				</div>
-			</div>
-		);
-	}
 
 	return (
 		<div className="mx-auto max-w-5xl p-6">
@@ -74,6 +61,4 @@ export default function DocsPage(): ReactElement {
 		</div>
 	);
 }
-=======
-export { default } from "@/app/(dashboard)/docs/page";
->>>>>>> Incoming (Background Agent changes)
+

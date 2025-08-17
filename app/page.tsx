@@ -1,15 +1,12 @@
 "use client";
 import { useEffect } from "react";
 import Link from "next/link";
-import { useAuthToken } from "@convex-dev/auth/react";
 import { usePathname, useRouter } from "next/navigation";
 
 export default function Home() {
-  const token = useAuthToken();
   const router = useRouter();
   const pathname = usePathname();
   useEffect(() => {
-    if (!token) return;
     if (pathname !== "/") return; // only act on root
     try {
       const last = localStorage.getItem("lastDocId");
@@ -21,7 +18,7 @@ export default function Home() {
     } catch {
       router.replace("/docs");
     }
-  }, [token, router, pathname]);
+  }, [router, pathname]);
   return (
     <div className="grid min-h-dvh place-items-center p-6">
       <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm">
