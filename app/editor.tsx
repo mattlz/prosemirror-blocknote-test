@@ -10,8 +10,6 @@ import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
-import { bannerSchema } from "./blocks/banner";
-import { SuggestionMenuController } from "@blocknote/react";
 import { Menu, ArrowLeft, MessageCircle, Plus, PanelLeftClose, PanelLeftOpen, SmilePlus } from "lucide-react";
 
 function IconPicker({ value, onChange }: { value?: string | null; onChange: (val: string | null) => void }): ReactElement {
@@ -232,94 +230,16 @@ function remoteCursorPlugin(getPresence: () => Array<{ userId: string; name: str
 	});
 }
 
-function DocumentEditor({ docId, onProvideInsert }: { docId: string; onProvideInsert?: (ops: { insertBanner: () => void }) => void }): ReactElement {
+function DocumentEditor({ docId }: { docId: string }): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
 	const sync = useBlockNoteSync<BlockNoteEditor>(api.example, docId, {
 		snapshotDebounceMs: 1000,
 		editorOptions: {
-			schema: (bannerSchema as any),
 			_extensions: {
 				remoteCursors: () => ({ plugin: remoteCursorPlugin(() => presence as any) }),
-				customSlash: (editor: BlockNoteEditor) => ({
-					plugin: new Plugin({
-						props: {
-							handleKeyDown(view, event) {
-								if (event.key !== " " && event.key !== "Enter") return false;
-								const { state, dispatch } = view;
-								const sel: any = state.selection;
-								if (!sel || !sel.$from || !sel.$from.parent || !sel.$from.parent.isTextblock) return false;
-								const prefix = sel.$from.parent.textBetween(0, sel.$from.parentOffset, undefined, "\uFFFC");
-								if (prefix.trim() !== "/banner") return false;
-								const startPos = sel.$from.start();
-								const schema: any = (editor as any).pmSchema;
-								const node = schema.nodes.banner?.create({}, schema.text("Custom block"));
-								if (!node) return false;
-								let tr = state.tr.delete(startPos, sel.$from.pos);
-								tr = tr.insert(startPos, node);
-								dispatch(tr);
-								return true;
-							},
-						},
-					})
-				}),
 			},
 		},
 	});
-
-	// Provide insert function to toolbar when the editor is ready
-	useEffect(() => {
-		if (!onProvideInsert) return;
-		const editor: any = (sync as any)?.editor;
-		if (!editor) return;
-		const insertBanner = (): void => {
-			try {
-				// Focus editor first
-				if (editor && typeof editor.focus === "function") {
-					editor.focus();
-				}
-				
-				// Get current cursor position to use as reference block
-				const cursorPos = editor.getTextCursorPosition();
-				if (!cursorPos?.block) {
-					console.error("Could not get current block for insertion");
-					return;
-				}
-				
-				// Insert banner after the current block using BlockNote's insertBlocks API
-				editor.insertBlocks(
-					[{ type: "banner", content: "Custom block" }],
-					cursorPos.block.id,
-					"after"
-				);
-				
-			} catch (error) {
-				console.error("Banner insertion failed:", error);
-			}
-		};
-		onProvideInsert({ insertBanner });
-	}, [onProvideInsert, (sync as any)?.editor]);
-
-	// Add a visible slash menu item for the banner block
-	useEffect(() => {
-		const editor = (sync as any)?.editor as any;
-		if (!editor?.suggestionMenus) return;
-		const items = editor.suggestionMenus.items || [];
-		if (items.some((i: any) => i?.title === "Custom block")) return;
-		items.push({
-			title: "Custom block",
-			aliases: ["custom", "banner"],
-			subtext: "Insert a banner",
-			onItemClick: () => {
-				try {
-					editor.insertBlocks([{ type: "banner", content: "Custom block" }]);
-				} catch (error) {
-					console.error("Slash menu banner insertion failed:", error);
-				}
-			},
-		});
-	}, [(sync as any)?.editor]);
-
-	// remove private suggestion menu edits
 
 	const token = useAuthToken();
 	const heartbeat = useMutation(api.presence.heartbeat);
@@ -339,32 +259,10 @@ function DocumentEditor({ docId, onProvideInsert }: { docId: string; onProvideIn
 	if ((sync as any)?.isLoading) return <p style={{ padding: 16 }}>Loading…</p> as any;
 	if (!(sync as any)?.editor) return <div style={{ padding: 16 }}>Editor not ready</div> as any;
 	const editorInst: any = (sync as any).editor;
-	const getItems = async (query: string) => {
-		const defaults = (await import("@blocknote/react")).getDefaultReactSlashMenuItems(editorInst);
-		const custom = [{
-			title: "Custom block",
-			aliases: ["custom", "banner"],
-			subtext: "Insert a banner",
-			onItemClick: (editor: any) => {
-				try {
-					editor.insertBlocks([{ type: "banner", content: "Custom block" }]);
-					editor.suggestionMenus?.clearQuery?.();
-					editor.suggestionMenus?.closeMenu?.();
-				} catch (error) {
-					console.error("Suggestion menu banner insertion failed:", error);
-				}
-			},
-		}];
-		const all = [...defaults, ...custom];
-		const { filterSuggestionItems } = await import("@blocknote/core");
-		return filterSuggestionItems(all as any, query) as any;
-	};
+	
 	return (
 		<div className="mt-4">
-			<BlockNoteView editor={editorInst}>
-				{/* TS types in @blocknote/react can mismatch; cast to any to avoid dev-time errors */}
-				<SuggestionMenuController {...({ triggerCharacter: "/", getItems } as unknown as any)} />
-			</BlockNoteView>
+			<BlockNoteView editor={editorInst} />
 		</div>
 	);
 }
@@ -440,15 +338,6 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 				<button className="inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm" onClick={() => { window.location.href = "/docs"; }}><ArrowLeft className="h-4 w-4" /> All docs</button>
 				<div className="text-lg font-semibold">{documentTitle}</div>
 				<div className="ml-auto flex items-center gap-2">
-					<select className="h-8 rounded-md border px-2 text-sm" onChange={(e) => {
-						if (e.target.value === "banner" && (window as any).__insertBanner) {
-							(window as any).__insertBanner();
-						}
-						e.target.value = "";
-					}} defaultValue="">
-						<option value="" disabled>Insert…</option>
-						<option value="banner">Banner block</option>
-					</select>
 					<button aria-label="Comments" className={["inline-flex h-8 w-8 items-center justify-center rounded-md border", commentsOpen ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={() => setCommentsOpen((v) => !v)}><MessageCircle className="h-4 w-4" /></button>
 					<PresenceAvatars docId={pageDocId} />
 				</div>
@@ -482,7 +371,7 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 									}} />
 									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
 								</div>
-								<DocumentEditor docId={pageDocId} onProvideInsert={({ insertBanner }) => { (window as any).__insertBanner = insertBanner; }} />
+								<DocumentEditor docId={pageDocId} />
 							</div>
 						</div>
 					)}
