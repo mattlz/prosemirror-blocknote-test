@@ -11,6 +11,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import { Menu, ArrowLeft, MessageCircle, Plus, PanelLeftClose, PanelLeftOpen, SmilePlus } from "lucide-react";
+import EmojiPicker from "emoji-picker-react";
 
 function IconPicker({ value, onChange }: { value?: string | null; onChange: (val: string | null) => void }): ReactElement {
 	const [open, setOpen] = useState(false);
@@ -20,22 +21,35 @@ function IconPicker({ value, onChange }: { value?: string | null; onChange: (val
 		document.addEventListener("click", onDoc);
 		return () => document.removeEventListener("click", onDoc);
 	}, []);
-	const EMOJIS = ["💡","📄","📋","📊","✅","📌","🚀","✨","🧠","🗂️","📝","📚","🔧","⚙️","🏷️","📎"];
 	return (
 		<div className="relative inline-block" ref={ref}>
-			<button className="inline-flex h-10 w-10 items-center justify-center rounded-md border bg-white text-lg text-neutral-400 hover:text-neutral-600" onClick={() => setOpen((v) => !v)}>
-				{value || <SmilePlus className="h-6 w-6" />}
-			</button>
-			{open ? (
-				<div className="absolute z-20 mt-2 w-56 rounded-md border bg-white p-2 shadow-sm">
-					<div className="grid grid-cols-8 gap-1">
-						{EMOJIS.map((e) => (
-							<button key={e} className="h-8 w-8 rounded hover:bg-neutral-100" onClick={() => { onChange(e); setOpen(false); }}>{e}</button>
-						))}
-					</div>
-					<button className="mt-2 w-full rounded border px-2 py-1 text-xs" onClick={() => { onChange(null); setOpen(false); }}>Remove</button>
+			{value ? (
+				<button className="text-5xl leading-none hover:opacity-70 transition-opacity" onClick={() => setOpen((v) => !v)}>
+					{value}
+				</button>
+			) : (
+				<button className="inline-flex h-10 w-10 items-center justify-center rounded-md border bg-white text-lg text-neutral-400 hover:text-neutral-600" onClick={() => setOpen((v) => !v)}>
+					<SmilePlus className="h-6 w-6" />
+				</button>
+			)}
+			{open && (
+				<div className="absolute z-20 mt-2">
+					<EmojiPicker
+						onEmojiClick={(emojiData) => {
+							onChange(emojiData.emoji);
+							setOpen(false);
+						}}
+						width={320}
+						height={400}
+					/>
+					<button 
+						className="mt-2 w-full rounded border px-2 py-1 text-xs bg-white hover:bg-neutral-50" 
+						onClick={() => { onChange(null); setOpen(false); }}
+					>
+						Remove
+					</button>
 				</div>
-			) : null}
+			)}
 		</div>
 	);
 }
@@ -60,7 +74,7 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 				{sortedPages.map((p: any, idx: number) => (
 					<div key={p._id} className={["group relative flex items-center gap-2 rounded-md px-2 py-1", props.activePageDocId === p.docId ? "bg-neutral-100" : "hover:bg-neutral-50"].join(" ")}>
 						<button onClick={() => props.onSelect(p.docId)} className="flex flex-1 items-center gap-2 text-left text-sm">
-							<span className="text-lg">{p.icon ?? ""}</span>
+							<span className="text-sm">{p.icon ?? ""}</span>
 							<span className="truncate">{p.title || "Untitled"}</span>
 						</button>
 						<button aria-label="Page menu" className="invisible h-6 w-6 rounded-md border text-xs group-hover:visible" onClick={() => setOpenMenuId(openMenuId === String(p._id) ? null : String(p._id))}>⋯</button>
