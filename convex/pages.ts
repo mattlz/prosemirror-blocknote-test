@@ -39,6 +39,28 @@ export const create = mutation({
 	},
 });
 
+// Create a subpage beneath a specific parent page. This mirrors `create` but
+// requires a `parentPageId` argument for clarity from the client.
+export const createSubpage = mutation({
+	args: { documentId: v.id("documents"), parentPageId: v.id("pages"), title: v.string() },
+	handler: async (ctx, { documentId, parentPageId, title }) => {
+		const parent = await ctx.db.get(parentPageId);
+		if (!parent) throw new Error("Parent page not found");
+		if (parent.parentPageId) throw new Error("Subpages cannot have their own subpages");
+		const now = Date.now();
+		const last = await ctx.db
+			.query("pages")
+			.withIndex("by_document_order", q => q.eq("documentId", documentId))
+			.order("desc")
+			.first();
+		const order = (last?.order ?? 0) + 1;
+		const docId = randomId();
+		const pageId = await ctx.db.insert("pages", { documentId, parentPageId, docId, title, order, createdAt: now });
+		await prosemirrorSync.create(ctx, docId, { type: "doc", content: [] });
+		return { pageId, docId };
+	},
+});
+
 export const rename = mutation({
 	args: { pageId: v.id("pages"), title: v.string() },
 	handler: async (ctx, { pageId, title }) => {

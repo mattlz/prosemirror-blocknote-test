@@ -10,7 +10,7 @@ import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
-import { Menu, ArrowLeft, MessageCircle, Plus, PanelLeftClose, PanelLeftOpen, SmilePlus } from "lucide-react";
+import { ArrowLeft, MessageCircle, Plus, PanelLeftClose, PanelLeftOpen, SmilePlus, ChevronRight, ChevronDown } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
 
 function IconPicker({ value, onChange }: { value?: string | null; onChange: (val: string | null) => void }): ReactElement {
@@ -62,8 +62,24 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 	const renamePage = useMutation(api.pages.rename);
 	const reorderPage = useMutation(api.pages.reorder);
 	const removePage = useMutation(api.pages.remove);
+	const createSubpage = useMutation(api.pages.createSubpage as any);
 	const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-	const sortedPages: any[] = Array.isArray(pages) ? [...(pages as any[])].sort((a: any, b: any) => a.order - b.order) : [];
+	const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+	const pagesArray: any[] = Array.isArray(pages) ? (pages as any[]) : [];
+	const topLevelPages: any[] = useMemo(() => pagesArray.filter((p: any) => !p.parentPageId).sort((a: any, b: any) => a.order - b.order), [pagesArray]);
+	const childrenByParent: Record<string, any[]> = useMemo(() => {
+		const map: Record<string, any[]> = {};
+		for (const p of pagesArray) {
+			const parentId = (p as any).parentPageId;
+			if (parentId) {
+				const key = String(parentId);
+				if (!map[key]) map[key] = [];
+				map[key].push(p);
+			}
+		}
+		for (const k of Object.keys(map)) map[k].sort((a, b) => a.order - b.order);
+		return map;
+	}, [pagesArray]);
 	return (
 		<div className="w-64 h-full bg-white border-r p-2 transition-transform duration-300 ease-in-out">
 			<div className="flex items-center justify-between px-1 py-2">
@@ -71,48 +87,123 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 				<button aria-label="Collapse sidebar" className="text-neutral-600 hover:text-neutral-900 transition-colors" onClick={props.onCollapse}><PanelLeftClose className="h-5 w-5" /></button>
 			</div>
 			<div className="flex flex-col gap-1">
-				{sortedPages.map((p: any, idx: number) => (
-					<div key={p._id} className={["group relative flex items-center gap-2 rounded-md px-2 py-1", props.activePageDocId === p.docId ? "bg-neutral-100" : "hover:bg-neutral-50"].join(" ")}>
-						<button onClick={() => props.onSelect(p.docId)} className="flex flex-1 items-center gap-2 text-left text-sm">
-							<span className="text-sm">{p.icon ?? ""}</span>
-							<span className="truncate">{p.title || "Untitled"}</span>
-						</button>
-						<button aria-label="Page menu" className="invisible h-6 w-6 rounded-md border text-xs group-hover:visible" onClick={() => setOpenMenuId(openMenuId === String(p._id) ? null : String(p._id))}>⋯</button>
-						{openMenuId === String(p._id) ? (
-							<div className="absolute right-2 top-7 z-20 w-40 rounded-md border bg-white p-1 shadow-md">
-								<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
-									const title = prompt("Rename page", p.title) || p.title;
-									await renamePage({ pageId: p._id, title });
-									setOpenMenuId(null);
-								}}>Rename</button>
-								{idx > 0 ? (
-									<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
-										await reorderPage({ pageId: p._id, beforePageId: sortedPages[idx - 1]._id });
-										setOpenMenuId(null);
-									}}>Move Up</button>
+				{topLevelPages.map((p: any, idx: number) => {
+					const children = childrenByParent[String(p._id)] ?? [];
+					const hasChildren = children.length > 0;
+					const isExpanded = expanded[String(p._id)] ?? false;
+					const siblings = topLevelPages;
+					return (
+						<div key={p._id} className="relative">
+							<div className={["group relative flex items-center gap-2 rounded-md px-2 py-1", props.activePageDocId === p.docId ? "bg-neutral-100" : "hover:bg-neutral-50"].join(" ")}>
+								{hasChildren ? (
+									<button
+										aria-label={isExpanded ? "Collapse" : "Expand"}
+										className="text-neutral-500 hover:text-neutral-900"
+										onClick={(e) => { e.stopPropagation(); setExpanded((prev) => ({ ...prev, [String(p._id)]: !isExpanded })); }}
+									>
+										{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+									</button>
+								) : <span className="w-4" />}
+								<button onClick={() => props.onSelect(p.docId)} className="flex flex-1 items-center gap-2 text-left text-sm">
+									<span className="text-sm">{p.icon ?? ""}</span>
+									<span className="truncate">{p.title || "Untitled"}</span>
+								</button>
+								<button aria-label="Page menu" className="invisible h-6 w-6 rounded-md border text-xs group-hover:visible" onClick={() => setOpenMenuId(openMenuId === String(p._id) ? null : String(p._id))}>⋯</button>
+								{openMenuId === String(p._id) ? (
+									<div className="absolute right-2 top-7 z-20 w-44 rounded-md border bg-white p-1 shadow-md">
+										<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+											const title = prompt("Rename page", p.title) || p.title;
+											await renamePage({ pageId: p._id, title });
+											setOpenMenuId(null);
+										}}>Rename</button>
+										{idx > 0 ? (
+											<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+												await reorderPage({ pageId: p._id, beforePageId: siblings[idx - 1]._id });
+												setOpenMenuId(null);
+											}}>Move Up</button>
+										) : null}
+										{idx < siblings.length - 1 ? (
+											<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+												const targetBefore = idx + 2 < siblings.length ? siblings[idx + 2]._id : undefined;
+												if (targetBefore) {
+													await reorderPage({ pageId: p._id, beforePageId: targetBefore });
+												} else {
+													await reorderPage({ pageId: p._id } as any); // move to end
+												}
+												setOpenMenuId(null);
+											}}>Move Down</button>
+										) : null}
+										<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+											const title = prompt("New subpage title", "Untitled page") || "Untitled page";
+											const { docId } = await createSubpage({ documentId: p.documentId, parentPageId: p._id, title } as any);
+											setExpanded((prev) => ({ ...prev, [String(p._id)]: true }));
+											props.onSelect(docId);
+											setOpenMenuId(null);
+										}}>Add subpage</button>
+										<button className="block w-full rounded px-2 py-1 text-left text-sm text-red-600 hover:bg-red-50" onClick={async () => {
+											if (confirm("Delete page?")) {
+												await removePage({ pageId: p._id });
+												if (props.activePageDocId === p.docId) props.onSelect("");
+											}
+											setOpenMenuId(null);
+										}}>Delete Page</button>
+									</div>
 								) : null}
-								{idx < sortedPages.length - 1 ? (
-									<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
-										const targetBefore = idx + 2 < sortedPages.length ? sortedPages[idx + 2]._id : undefined;
-										if (targetBefore) {
-											await reorderPage({ pageId: p._id, beforePageId: targetBefore });
-										} else {
-											await reorderPage({ pageId: p._id } as any); // move to end
-										}
-										setOpenMenuId(null);
-									}}>Move Down</button>
-								) : null}
-								<button className="block w-full rounded px-2 py-1 text-left text-sm text-red-600 hover:bg-red-50" onClick={async () => {
-									if (confirm("Delete page?")) {
-										await removePage({ pageId: p._id });
-										if (props.activePageDocId === p.docId) props.onSelect("");
-									}
-									setOpenMenuId(null);
-								}}>Delete Page</button>
 							</div>
-						) : null}
-					</div>
-				))}
+
+							{hasChildren && isExpanded ? (
+								<div className="mt-1">
+									{children.map((c: any, cIdx: number) => {
+										const cSiblings = children;
+										return (
+											<div key={c._id} className={["group relative ml-4 flex items-center gap-2 rounded-md px-2 py-1", props.activePageDocId === c.docId ? "bg-neutral-100" : "hover:bg-neutral-50"].join(" ")}>
+												<span className="w-4" />
+												<button onClick={() => props.onSelect(c.docId)} className="flex flex-1 items-center gap-2 text-left text-sm">
+													<span className="text-sm">{c.icon ?? ""}</span>
+													<span className="truncate">{c.title || "Untitled"}</span>
+												</button>
+												<button aria-label="Page menu" className="invisible h-6 w-6 rounded-md border text-xs group-hover:visible" onClick={() => setOpenMenuId(openMenuId === String(c._id) ? null : String(c._id))}>⋯</button>
+												{openMenuId === String(c._id) ? (
+													<div className="absolute right-2 top-7 z-20 w-40 rounded-md border bg-white p-1 shadow-md">
+														<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+															const title = prompt("Rename page", c.title) || c.title;
+															await renamePage({ pageId: c._id, title });
+															setOpenMenuId(null);
+														}}>Rename</button>
+														{cIdx > 0 ? (
+															<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+																await reorderPage({ pageId: c._id, beforePageId: cSiblings[cIdx - 1]._id });
+																setOpenMenuId(null);
+															}}>Move Up</button>
+														) : null}
+														{cIdx < cSiblings.length - 1 ? (
+															<button className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-neutral-100" onClick={async () => {
+																const targetBefore = cIdx + 2 < cSiblings.length ? cSiblings[cIdx + 2]._id : undefined;
+																if (targetBefore) {
+																	await reorderPage({ pageId: c._id, beforePageId: targetBefore });
+																} else {
+																	await reorderPage({ pageId: c._id } as any); // move to end
+																}
+																setOpenMenuId(null);
+															}}>Move Down</button>
+														) : null}
+														<button className="block w-full rounded px-2 py-1 text-left text-sm text-red-600 hover:bg-red-50" onClick={async () => {
+															if (confirm("Delete page?")) {
+																await removePage({ pageId: c._id });
+																if (props.activePageDocId === c.docId) props.onSelect("");
+															}
+															setOpenMenuId(null);
+														}}>Delete Page</button>
+													</div>
+												) : null}
+											</div>
+										);
+									})}
+								</div>
+							) : null}
+						</div>
+					);
+				})}
 			</div>
 			<button className="mt-2 flex w-full items-center gap-1 px-2 py-1 text-left text-sm text-neutral-600 hover:text-neutral-900" onClick={props.onCreatePage} disabled={!props.documentId}><Plus className="h-4 w-4" /> New page</button>
 		</div>
@@ -312,7 +403,7 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 	};
 
 	// Load lists to compute titles and preselect first page
-	const pages = useQuery(documentId ? api.pages.list : (api.documents.list as any), documentId ? ({ documentId: documentId as any, parentPageId: undefined as any } as any) : ({} as any)) ?? [];
+	const pages = useQuery(documentId ? api.pages.list : (api.documents.list as any), documentId ? ({ documentId: documentId as any } as any) : ({} as any)) ?? [];
 	const documents = useQuery(api.documents.list, {}) ?? [];
 	const documentTitle = useMemo(() => (documents as any[]).find((d) => d._id === documentId)?.title ?? "All docs", [documents, documentId]);
 	const currentPageTitle = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId)?.title ?? "Untitled", [pages, pageDocId]);
@@ -326,7 +417,8 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 		if (!documentId) return;
 		if (!Array.isArray(pages)) return; // still loading
 		if (pageDocId) return;
-		const first = (pages as any[]).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+		const topLevel = (pages as any[]).filter((p) => !(p as any).parentPageId);
+		const first = topLevel.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
 		if (first?.docId) setPageDocId(first.docId);
 	}, [documentId, pageDocId, pages]);
 
