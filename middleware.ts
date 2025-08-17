@@ -6,19 +6,22 @@ export async function middleware(request: NextRequest) {
 	const isProtected = pathname.startsWith("/docs");
 	const isAuthPage = pathname === "/signin" || pathname === "/signup";
 
-	// Best-effort token detection. Convex auth primarily runs client-side; if no
-	// cookie is present we fail-open to preserve existing behavior.
+	// Improved token detection
 	const token = request.cookies.get("convex_auth")?.value
 		|| request.cookies.get("auth-token")?.value
 		|| request.cookies.get("convex-token")?.value
 		|| request.cookies.get("token")?.value;
 
+	// Redirect authenticated users away from auth pages
 	if (isAuthPage && token) {
 		return NextResponse.redirect(new URL("/docs", request.url));
 	}
 
-	// For now, allow through on protected routes if we cannot detect token.
-	// Client-side checks still enforce redirects, preserving behavior.
+	// Actually protect routes instead of failing open
+	if (isProtected && !token) {
+		return NextResponse.redirect(new URL("/signin", request.url));
+	}
+
 	return NextResponse.next();
 }
 

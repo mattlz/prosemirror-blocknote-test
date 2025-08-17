@@ -7,8 +7,8 @@ import { BlockNoteEditor } from "@/components/editor";
 import { PageSidebar, IconPicker } from "@/components/sidebar";
 import { TopBar, SidebarOpenButton } from "@/components/layout";
 
-function EditorBody(props: { initialDocumentId?: string | null }): ReactElement {
-	const [documentId, setDocumentId] = useState<string | null>(props.initialDocumentId ?? null);
+export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null }): ReactElement {
+	const [documentId, setDocumentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);
 	const [pageDocId, setPageDocId] = useState<string | null>(null);
 	const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
 	const [showOpenButton, setShowOpenButton] = useState<boolean>(false);
@@ -27,7 +27,6 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 			const { docId } = await createPage({ documentId: id as any, title: "Untitled" });
 			setPageDocId(docId);
 		} catch {
-			// If page creation fails, keep the document selected and let user create manually
 			setPageDocId(null);
 		}
 	};
@@ -39,34 +38,28 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 		setPageDocId(docId);
 	};
 
-	// Load lists to compute titles and preselect first page
 	const pages = useQuery(documentId ? api.pages.list : (api.documents.list as any), documentId ? ({ documentId: documentId as any } as any) : ({} as any)) ?? [];
 	const documents = useQuery(api.documents.list, {}) ?? [];
 	const documentTitle = useMemo(() => (documents as any[]).find((d) => d._id === documentId)?.title ?? "All docs", [documents, documentId]);
 	const currentPageTitle = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId)?.title ?? "Untitled", [pages, pageDocId]);
 	const currentPage = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId), [pages, pageDocId]);
 
-	// Track last documentId to prevent repeated auto-creation across opens
 	const lastDocIdRef = useRef<string | null>(null);
 
-	// Preselect first page only after pages have loaded
 	useEffect(() => {
 		if (!documentId) return;
-		if (!Array.isArray(pages)) return; // still loading
+		if (!Array.isArray(pages)) return;
 		if (pageDocId) return;
 		const topLevel = (pages as any[]).filter((p) => !(p as any).parentPageId);
 		const first = topLevel.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
 		if (first?.docId) setPageDocId(first.docId);
 	}, [documentId, pageDocId, pages]);
 
-	// Handle sidebar open/close timing
 	useEffect(() => {
 		if (!sidebarOpen) {
-			// Show open button after slide-out animation completes (300ms)
 			const timer = setTimeout(() => setShowOpenButton(true), 300);
 			return () => clearTimeout(timer);
 		} else {
-			// Hide open button immediately when sidebar opens
 			setShowOpenButton(false);
 		}
 	}, [sidebarOpen]);
