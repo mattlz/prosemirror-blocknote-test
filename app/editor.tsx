@@ -12,6 +12,7 @@ import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import { bannerSchema } from "./blocks/banner";
 import { SuggestionMenuController } from "@blocknote/react";
+import { Menu, ArrowLeft, MessageCircle, Plus, PanelLeftClose, PanelLeftOpen, SmilePlus } from "lucide-react";
 
 function IconPicker({ value, onChange }: { value?: string | null; onChange: (val: string | null) => void }): ReactElement {
 	const [open, setOpen] = useState(false);
@@ -24,8 +25,8 @@ function IconPicker({ value, onChange }: { value?: string | null; onChange: (val
 	const EMOJIS = ["💡","📄","📋","📊","✅","📌","🚀","✨","🧠","🗂️","📝","📚","🔧","⚙️","🏷️","📎"];
 	return (
 		<div className="relative inline-block" ref={ref}>
-			<button className="inline-flex h-9 w-9 items-center justify-center rounded-md border bg-white text-lg" onClick={() => setOpen((v) => !v)}>
-				{value || "🙂"}
+			<button className="inline-flex h-10 w-10 items-center justify-center rounded-md border bg-white text-lg text-neutral-400 hover:text-neutral-600" onClick={() => setOpen((v) => !v)}>
+				{value || <SmilePlus className="h-6 w-6" />}
 			</button>
 			{open ? (
 				<div className="absolute z-20 mt-2 w-56 rounded-md border bg-white p-2 shadow-sm">
@@ -52,10 +53,10 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 	const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 	const sortedPages: any[] = Array.isArray(pages) ? [...(pages as any[])].sort((a: any, b: any) => a.order - b.order) : [];
 	return (
-		<div className="w-64 bg-white p-2">
+		<div className="w-64 h-full bg-white border-r p-2 transition-transform duration-300 ease-in-out">
 			<div className="flex items-center justify-between px-1 py-2">
 				<span className="text-xs font-semibold text-neutral-500">Pages</span>
-				<button aria-label="Collapse sidebar" className="inline-flex h-7 w-7 items-center justify-center rounded-md border text-xs" onClick={props.onCollapse}>≡</button>
+				<button aria-label="Collapse sidebar" className="text-neutral-600 hover:text-neutral-900 transition-colors" onClick={props.onCollapse}><PanelLeftClose className="h-5 w-5" /></button>
 			</div>
 			<div className="flex flex-col gap-1">
 				{sortedPages.map((p: any, idx: number) => (
@@ -101,7 +102,7 @@ function Sidebar(props: { documentId: string | null; activePageDocId: string | n
 					</div>
 				))}
 			</div>
-			<button className="mt-2 w-full px-2 py-1 text-left text-sm text-neutral-600 hover:text-neutral-900" onClick={props.onCreatePage} disabled={!props.documentId}>+ New page</button>
+			<button className="mt-2 flex w-full items-center gap-1 px-2 py-1 text-left text-sm text-neutral-600 hover:text-neutral-900" onClick={props.onCreatePage} disabled={!props.documentId}><Plus className="h-4 w-4" /> New page</button>
 		</div>
 	);
 }
@@ -372,6 +373,7 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 	const [documentId, setDocumentId] = useState<string | null>(props.initialDocumentId ?? null);
 	const [pageDocId, setPageDocId] = useState<string | null>(null);
 	const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+	const [showOpenButton, setShowOpenButton] = useState<boolean>(false);
 	const [commentsOpen, setCommentsOpen] = useState<boolean>(false);
 	const createDocument = useMutation(api.documents.create);
 	const createPage = useMutation(api.pages.create);
@@ -416,6 +418,18 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 		if (first?.docId) setPageDocId(first.docId);
 	}, [documentId, pageDocId, pages]);
 
+	// Handle sidebar open/close timing
+	useEffect(() => {
+		if (!sidebarOpen) {
+			// Show open button after slide-out animation completes (300ms)
+			const timer = setTimeout(() => setShowOpenButton(true), 300);
+			return () => clearTimeout(timer);
+		} else {
+			// Hide open button immediately when sidebar opens
+			setShowOpenButton(false);
+		}
+	}, [sidebarOpen]);
+
 	// Note: We intentionally do NOT auto-create pages on open.
 	// First page creation happens only in onCreateDocument for a smoother onboarding without surprises.
 
@@ -423,8 +437,7 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 		<div className="min-h-screen w-full overflow-hidden">
 			{/* Top bar */}
 			<div className="sticky top-0 z-10 flex w-full items-center gap-3 border-b bg-white px-4 py-2">
-				<button className="inline-flex h-8 items-center rounded-md border px-2 text-sm" onClick={() => { window.location.href = "/docs"; }}>← All docs</button>
-				<button className="inline-flex h-8 items-center rounded-md border px-2 text-sm" onClick={() => setSidebarOpen((v) => !v)}>{sidebarOpen ? "Hide sidebar" : "Show sidebar"}</button>
+				<button className="inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm" onClick={() => { window.location.href = "/docs"; }}><ArrowLeft className="h-4 w-4" /> All docs</button>
 				<div className="text-lg font-semibold">{documentTitle}</div>
 				<div className="ml-auto flex items-center gap-2">
 					<select className="h-8 rounded-md border px-2 text-sm" onChange={(e) => {
@@ -436,25 +449,32 @@ function EditorBody(props: { initialDocumentId?: string | null }): ReactElement 
 						<option value="" disabled>Insert…</option>
 						<option value="banner">Banner block</option>
 					</select>
-					<button aria-label="Comments" className={["inline-flex h-8 w-8 items-center justify-center rounded-md border", commentsOpen ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={() => setCommentsOpen((v) => !v)}>💬</button>
+					<button aria-label="Comments" className={["inline-flex h-8 w-8 items-center justify-center rounded-md border", commentsOpen ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={() => setCommentsOpen((v) => !v)}><MessageCircle className="h-4 w-4" /></button>
 					<PresenceAvatars docId={pageDocId} />
 				</div>
 			</div>
 
 			{/* Body: sidebar + editor + comments */}
-			<div className="flex">
-				{sidebarOpen ? (
+			<div className="flex h-[calc(100vh-theme(spacing.16))] relative overflow-hidden">
+				<div className={`transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
 					<Sidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} onCollapse={() => setSidebarOpen(false)} />
-				) : (
-					<div className="w-3 shrink-0" />
+				</div>
+				{showOpenButton && (
+					<button 
+						aria-label="Open sidebar" 
+						className="absolute left-4 top-2 z-20 text-neutral-600 hover:text-neutral-900 transition-all duration-300 ease-in-out animate-in fade-in"
+						onClick={() => setSidebarOpen(true)}
+					>
+						<PanelLeftOpen className="h-5 w-5" />
+					</button>
 				)}
 				<div className="flex-1">
 					{!pageDocId ? (
 						<div className="p-6 text-neutral-600">{documentId ? "Select or create a page" : "No document selected"}</div>
 					) : (
 						<div className="p-6">
-							<div className="mx-auto w-full max-w-[1200px]">
-								<div className="mb-4 flex items-center gap-3 pl-12">
+							<div className="mx-auto w-full max-w-[1000px]">
+								<div className="mt-4 mb-4 flex items-center gap-3">
 									<IconPicker value={(pages as any[]).find((p) => p.docId === pageDocId)?.icon ?? null} onChange={(val) => {
 										const page = (pages as any[]).find((p) => p.docId === pageDocId);
 										if (!page) return;
