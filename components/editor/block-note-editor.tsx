@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useCallback, type ReactElement } from "react";
-import { BlockNoteView } from "@blocknote/mantine";
-import "@blocknote/mantine/style.css";
+import { BlockNoteView } from "@blocknote/shadcn";
+import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
 import { BlockNoteEditor, nodeToBlock } from "@blocknote/core";
 import { api } from "@/convex/_generated/api";
