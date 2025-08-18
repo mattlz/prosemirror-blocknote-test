@@ -8,8 +8,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexThreadStore } from "@/app/comments/convex-thread-store";
 import { useAuthToken } from "@convex-dev/auth/react";
-import { usePresence } from "@/hooks";
-import { useBlockNoteEditor as useEditorInit } from "@/hooks";
+import { useTiptapSync } from "@convex-dev/prosemirror-sync/tiptap";
 import { createRemoteCursorPlugin } from "@/components/editor";
 
 interface BlockNoteEditorProps {
@@ -18,7 +17,7 @@ interface BlockNoteEditorProps {
 }
 
 export function BlockNoteEditorComponent({ docId, onEditorReady }: BlockNoteEditorProps): ReactElement {
-	const { presence, heartbeat } = usePresence(docId);
+	const presence = useQuery(api.presence.list, { docId }) ?? [];
 	const threadsForDoc = (useQuery(api.comments.listByDoc, { docId, includeResolved: true }) ?? []) as Array<{ thread: any; comments: any[] }>;
 
 	const presenceMap = useMemo(() => {
@@ -48,30 +47,42 @@ export function BlockNoteEditorComponent({ docId, onEditorReady }: BlockNoteEdit
 		resolveThread: ({ threadId, resolved }) => resolveThreadMutation({ threadId, resolved }) as any,
 	}), [docId, createThreadMutation, addCommentMutation, updateCommentMutation, deleteCommentMutation, resolveThreadMutation]);
 
-	// Initialize editor via hook
-	const tiptapInit = useEditorInit(docId, resolveUsers, threadStore);
+	const tiptapSync = useTiptapSync(api.example, docId, { snapshotDebounceMs: 1000 });
+
 	const editorFromSync = useMemo(() => {
-		if ((tiptapInit as any)?.editor === null) return null;
-		// Add remote cursor plugin and initial content mapping
-		const base = (tiptapInit as any)?.editor;
-		if (!base) return null;
-		// The hook created BlockNote editor with tiptap extension already, so we just return it
-		// and rely on presence cursor plugin via _extensions below.
+		if (tiptapSync.initialContent === null) return null;
+		// Headless editor for PM->BlockNote conversion only (no comments in headless)
+		const headless = BlockNoteEditor.create({ resolveUsers, _headless: true });
+		const blocks: any[] = [];
+		const pmNode = headless.pmSchema.nodeFromJSON(tiptapSync.initialContent as any);
+		if ((pmNode as any).firstChild) {
+			(pmNode as any).firstChild.descendants((node: any) => {
+				blocks.push(nodeToBlock(node, headless.pmSchema));
+				return false;
+			});
+		}
 		return BlockNoteEditor.create({
 			resolveUsers,
 			comments: { threadStore: threadStore as any },
-			_tiptapOptions: { extensions: [(tiptapInit as any).editor?._tiptapOptions?.extensions?.[0]] },
-			_extensions: { remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => presence as any) }) },
+			_tiptapOptions: {
+				extensions: [tiptapSync.extension],
+			},
+			_extensions: {
+				remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => presence as any) }),
+			},
+			initialContent: blocks.length > 0 ? blocks : undefined,
 		});
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [(tiptapInit as any)?.editor, resolveUsers, threadStore, presence]);
+	}, [tiptapSync.initialContent, resolveUsers, threadStore, presence]);
 
 	const sync = useMemo(() => ({
 		editor: editorFromSync,
-		isLoading: (tiptapInit as any)?.isLoading,
-	}), [editorFromSync, (tiptapInit as any)?.isLoading]);
+		isLoading: tiptapSync.isLoading,
+		create: tiptapSync.create,
+	}), [editorFromSync, tiptapSync.isLoading, tiptapSync.create]);
 
 	const token = useAuthToken();
+	const heartbeat = useMutation(api.presence.heartbeat);
 	useEffect(() => {
 		if (!token) return;
 		let active = true;

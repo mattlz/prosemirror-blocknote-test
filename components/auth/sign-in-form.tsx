@@ -12,7 +12,14 @@ export function SignInForm({ onSuccess }: SignInFormProps): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const onSubmit = async (): Promise<void> => {
     setLoading(true); setError(null);
-    try { await signIn("password", { flow: "signIn", email, password }); onSuccess?.(); } catch(e:any){ setError(e?.message ?? "Failed to sign in"); } finally { setLoading(false); }
+    try { 
+      await signIn("password", { flow: "signIn", email, password }); 
+      onSuccess?.(); 
+    } catch(e:any){ 
+      setError(e?.message ?? "Failed to sign in"); 
+    } finally { 
+      setLoading(false); 
+    }
   };
   return (
     <form className="mt-4 grid gap-3" onSubmit={(e)=>{e.preventDefault(); void onSubmit();}}>

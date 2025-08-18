@@ -1,4 +1,3 @@
-export * from "./auth/use-auth";
 export * from "./data/use-documents";
 export * from "./data/use-pages";
 export * from "./data/use-comments";

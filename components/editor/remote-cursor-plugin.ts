@@ -1,22 +1,22 @@
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 
-/**
- * Creates a ProseMirror plugin that renders remote caret widgets based on presence data.
- */
-export function createRemoteCursorPlugin(getPresence: () => Array<{ userId: string; name: string; color: string; cursor: string }>): Plugin {
+const remoteCursorKey = new PluginKey("remoteCursors");
+
+export function createRemoteCursorPlugin(getPresence: () => Array<{ userId: string; name: string; color: string; cursor: string }>) {
 	return new Plugin({
-		key: new PluginKey("remoteCursors"),
+		key: remoteCursorKey,
 		state: {
 			init: () => DecorationSet.empty,
 			apply(tr, set) {
-				return set.map(tr.mapping, tr.doc);
+				const mapped = set.map(tr.mapping, tr.doc);
+				return mapped;
 			},
 		},
 		props: {
-			decorations() {
+			decorations(state) {
 				const presence = getPresence();
-				const decorations: Decoration[] = [];
+				const decos: Decoration[] = [];
 				for (const p of presence) {
 					const pos = Number(p.cursor || 0);
 					const color = p.color || "#3b82f6";
@@ -38,9 +38,9 @@ export function createRemoteCursorPlugin(getPresence: () => Array<{ userId: stri
 					label.style.borderRadius = "3px";
 					label.style.fontSize = "10px";
 					cursorEl.appendChild(label);
-					decorations.push(Decoration.widget(pos, cursorEl, { key: `cursor-${p.userId}` }));
+					decos.push(Decoration.widget(pos, cursorEl, { key: `cursor-${p.userId}` }));
 				}
-				return DecorationSet.create((window as any).view?.state?.doc ?? undefined, decorations);
+				return DecorationSet.create(state.doc, decos);
 			},
 		},
 	});

@@ -1,29 +1,27 @@
+import { convexAuthNextjsMiddleware } from "@convex-dev/auth/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export default convexAuthNextjsMiddleware((request: NextRequest) => {
 	const { pathname } = request.nextUrl;
-
+	
+	// Auth routes that should redirect authenticated users
+	const authRoutes = ["/signin", "/signup"];
+	const isAuthRoute = authRoutes.includes(pathname);
 	const isProtected = pathname.startsWith("/docs");
-	const isAuthPage = pathname === "/signin" || pathname === "/signup";
-
-	// Improved token detection
-	const token = request.cookies.get("convex_auth")?.value
-		|| request.cookies.get("auth-token")?.value
-		|| request.cookies.get("convex-token")?.value
-		|| request.cookies.get("token")?.value;
-
+	
+	// Get authentication status from Convex Auth
+	const isAuthenticated = request.nextUrl.searchParams.has('convex-auth-token') || 
+	                        request.cookies.has('convex-auth-token');
+	
 	// Redirect authenticated users away from auth pages
-	if (isAuthPage && token) {
-		return NextResponse.redirect(new URL("/docs", request.url));
+	if (isAuthenticated && isAuthRoute) {
+		return NextResponse.redirect(new URL('/docs', request.url));
 	}
-
-	// Actually protect routes instead of failing open
-	if (isProtected && !token) {
-		return NextResponse.redirect(new URL("/signin", request.url));
-	}
-
-	return NextResponse.next();
-}
+	
+	// For protected routes, let Convex Auth handle the authentication
+	// The convexAuthNextjsMiddleware will automatically handle redirects
+	return;
+});
 
 export const config = {
 	matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],

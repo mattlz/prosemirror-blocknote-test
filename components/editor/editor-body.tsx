@@ -10,6 +10,7 @@ import { TopBar, SidebarOpenButton } from "@/components/layout";
 export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null }): ReactElement {
 	const [documentId, setDocumentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);
 	const [pageDocId, setPageDocId] = useState<string | null>(null);
+	
 	const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
 	const [showOpenButton, setShowOpenButton] = useState<boolean>(false);
 	const [commentsOpen, setCommentsOpen] = useState<boolean>(false);
@@ -40,6 +41,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 
 	const pages = useQuery(documentId ? api.pages.list : (api.documents.list as any), documentId ? ({ documentId: documentId as any } as any) : ({} as any)) ?? [];
 	const documents = useQuery(api.documents.list, {}) ?? [];
+	
 	const documentTitle = useMemo(() => (documents as any[]).find((d) => d._id === documentId)?.title ?? "All docs", [documents, documentId]);
 	const currentPageTitle = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId)?.title ?? "Untitled", [pages, pageDocId]);
 	const currentPage = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId), [pages, pageDocId]);
