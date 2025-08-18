@@ -34,3 +34,12 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Comments
+
+BlockNote comments are integrated with Convex.
+
+- Schema additions in `convex/schema.ts`: `comments`, `commentThreads`.
+- Backend functions in `convex/comments.ts` for listing, creating, replying, updating, deleting, and resolving.
+- Editor integration in `app/editor.tsx` via `useBlockNoteSync` `editorOptions.comments` with a Convex-backed threadStore and `resolveUsers`.
+- Sidebar UI in `app/comments/comments-sidebar.tsx` lists threads, replies, and actions.

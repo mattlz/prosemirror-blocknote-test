@@ -4,6 +4,26 @@ import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
 	...authTables,
+	documents: defineTable({
+		title: v.string(),
+		createdAt: v.number(),
+		ownerId: v.optional(v.string()),
+		archivedAt: v.optional(v.number()),
+	}).index("by_owner", ["ownerId"]).index("by_created", ["createdAt"]),
+
+	pages: defineTable({
+		documentId: v.id("documents"),
+		parentPageId: v.optional(v.id("pages")),
+		docId: v.string(),
+		title: v.string(),
+		icon: v.optional(v.string()),
+		order: v.number(),
+		createdAt: v.number(),
+	})
+		.index("by_document", ["documentId"]) 
+		.index("by_document_parent", ["documentId", "parentPageId"]) 
+		.index("by_document_order", ["documentId", "order"]) 
+		.index("by_docId", ["docId"]),
 	presence: defineTable({
 		docId: v.string(),
 		userId: v.string(),
@@ -14,4 +34,29 @@ export default defineSchema({
 	})
 		.index("by_doc", ["docId"]) 
 		.index("by_doc_user", ["docId", "userId"]),
+	comments: defineTable({
+		docId: v.string(),
+		blockId: v.string(),
+		threadId: v.string(),
+		content: v.string(),
+		authorId: v.string(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+		resolved: v.optional(v.boolean()),
+		parentCommentId: v.optional(v.id("comments")),
+	})
+		.index("by_doc", ["docId"])
+		.index("by_thread", ["threadId"])
+		.index("by_block", ["blockId"])
+		.index("by_doc_resolved", ["docId", "resolved"]),
+	commentThreads: defineTable({
+		id: v.string(),
+		docId: v.string(),
+		blockId: v.string(),
+		createdAt: v.number(),
+		resolved: v.optional(v.boolean()),
+		creatorId: v.optional(v.string()),
+	})
+		.index("by_doc", ["docId"]) 
+		.index("by_block", ["blockId"]),
 });

@@ -9,8 +9,11 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as comments from "../comments.js";
+import type * as documents from "../documents.js";
 import type * as example from "../example.js";
 import type * as http from "../http.js";
+import type * as pages from "../pages.js";
 import type * as presence from "../presence.js";
 
 import type {
@@ -29,8 +32,11 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  comments: typeof comments;
+  documents: typeof documents;
   example: typeof example;
   http: typeof http;
+  pages: typeof pages;
   presence: typeof presence;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
