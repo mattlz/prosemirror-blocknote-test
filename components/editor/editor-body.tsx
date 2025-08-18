@@ -112,6 +112,18 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 						docId={pageDocId ?? ""}
 						onJumpToBlock={(blockId: string) => {
 							const viewEl = document.querySelector(".bn-editor, [data-editor-root]") as HTMLElement | null;
+							// Special handling for page-level threads
+							if (blockId === "page") {
+								const titleEl = document.querySelector("h1.text-5xl.font-extrabold.tracking-tight") as HTMLElement | null;
+								if (titleEl) {
+									titleEl.scrollIntoView({ behavior: "smooth", block: "start" });
+									titleEl.classList.add("ring-2", "ring-blue-500", "rounded");
+									setTimeout(() => titleEl.classList.remove("ring-2", "ring-blue-500", "rounded"), 1500);
+								} else {
+									window.scrollTo({ top: 0, behavior: "smooth" });
+								}
+								return;
+							}
 							const trySelectors = [
 								`[data-id="${blockId}"]`,
 								`[data-block-id="${blockId}"]`,
@@ -129,20 +141,23 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 							}
 						}}
 						onCreateThread={async (content: string) => {
-							if (!editorRef.current) return;
-							const getBlocks = (editorRef.current as any)?.getSelectedBlocks ?? (editorRef.current as any)?.blocksForSelection;
-							let selectedId: string | null = null;
+							if (!editorRef.current || !pageDocId) return;
+
+							let selectedId: string = "page";
 							try {
+								const getBlocks = (editorRef.current as any)?.getSelectedBlocks ?? (editorRef.current as any)?.blocksForSelection;
 								const blocks = getBlocks?.call(editorRef.current) ?? [];
-								if (Array.isArray(blocks) && blocks.length > 0) {
-									selectedId = (blocks[0] as any)?.id ?? null;
+								if (Array.isArray(blocks) && blocks.length > 0 && (blocks[0] as any)?.id) {
+									selectedId = (blocks[0] as any).id;
+								} else {
+									const allBlocks = (editorRef.current as any)?.document ?? [];
+									if (Array.isArray(allBlocks) && allBlocks.length > 0 && (allBlocks[0] as any)?.id) {
+										selectedId = (allBlocks[0] as any).id;
+									}
 								}
 							} catch {}
-							if (!selectedId) {
-								alert("Select a block to attach your comment to.");
-								return;
-							}
-							await createThreadMutation({ docId: pageDocId ?? "", blockId: selectedId, content }).catch(() => {});
+
+							await createThreadMutation({ docId: pageDocId, blockId: selectedId, content }).catch(() => {});
 						}}
 					/>
 				) : null}

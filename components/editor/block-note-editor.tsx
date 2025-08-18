@@ -72,9 +72,23 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	const editorFromSync = useMemo(() => {
 		if (tiptapSync.initialContent === null) return null;
 		// Headless editor for PM->BlockNote conversion only (no comments in headless)
+		// The TipTap snapshot may include a PM mark type named "comment" which
+		// doesn't exist in BlockNote's headless schema. Strip those marks first.
+		function stripUnsupportedMarks(node: any): any {
+			if (!node || typeof node !== "object") return node;
+			const clone: any = { ...node };
+			if (Array.isArray(clone.marks)) {
+				clone.marks = clone.marks.filter((m: any) => m?.type !== "comment");
+			}
+			if (Array.isArray(clone.content)) {
+				clone.content = clone.content.map(stripUnsupportedMarks);
+			}
+			return clone;
+		}
+		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent as any);
 		const headless = BlockNoteEditor.create({ resolveUsers, _headless: true });
 		const blocks: any[] = [];
-		const pmNode = headless.pmSchema.nodeFromJSON(tiptapSync.initialContent as any);
+		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial as any);
 		if ((pmNode as any).firstChild) {
 			(pmNode as any).firstChild.descendants((node: any) => {
 				blocks.push(nodeToBlock(node, headless.pmSchema));
@@ -149,7 +163,6 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 				for (const sel of trySelectors) {
 					const el = document.querySelector(sel) as HTMLElement | null;
 					if (el) {
-						el.classList.remove("ring-1", "ring-amber-400");
 						el.removeAttribute("data-has-comment");
 					}
 				}
@@ -168,7 +181,6 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 				if (el) break;
 			}
 			if (el) {
-				el.classList.add("ring-1", "ring-amber-400");
 				el.setAttribute("data-has-comment", "1");
 				lastMarkedRef.current.add(id);
 			}
