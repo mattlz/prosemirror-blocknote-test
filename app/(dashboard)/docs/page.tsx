@@ -4,9 +4,11 @@ import { useMemo, useState, type ReactElement } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useRouter } from "next/navigation";
 
 export default function DocsPage(): ReactElement {
 	const { signOut } = useAuthActions();
+	const router = useRouter();
 	const docs = useQuery(api.documents.list, {}) ?? [];
 	const create = useMutation(api.documents.create);
 	const rename = useMutation(api.documents.rename);
@@ -25,7 +27,7 @@ export default function DocsPage(): ReactElement {
 						const title = prompt("New document title", "Untitled Document") || "Untitled Document";
 						await create({ title });
 					}}>New</button>
-					<button className="inline-flex h-9 items-center rounded-md border px-3" onClick={() => signOut()}>Sign out</button>
+					<button className="inline-flex h-9 items-center rounded-md border px-3" onClick={async () => { await signOut(); router.replace("/signin"); }}>Sign out</button>
 				</div>
 			</header>
 			<div className="mt-4 overflow-hidden rounded-lg border">

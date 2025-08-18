@@ -15,9 +15,15 @@ export function PresenceAvatars(props: PresenceAvatarsProps): ReactElement {
 
 function PresenceAvatarsInner({ docId, className }: { docId: string; className?: string }): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
+	const me = useQuery(api.comments.me, {});
+	const currentUserId = (me as any)?.userId ?? null;
+	
+	// Filter out current user from presence display
+	const otherUsers = presence.filter((p: any) => p.userId !== currentUserId);
+	
 	return (
 		<div className={["flex items-center -space-x-2", className].filter(Boolean).join(" ")}> 
-			{presence.map((p, idx) => (
+			{otherUsers.map((p, idx) => (
 				<div
 					key={(p as any).userId ?? idx}
 					title={(p as any).name}

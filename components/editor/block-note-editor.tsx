@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useCallback, type ReactElement } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
 import "@blocknote/core/fonts/inter.css";
@@ -18,7 +18,22 @@ interface BlockNoteEditorProps {
 
 export function BlockNoteEditorComponent({ docId, onEditorReady }: BlockNoteEditorProps): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
+	const me = useQuery(api.comments.me, {});
+	const userId = (me as any)?.userId ?? null;
+	const userEmail = (me as any)?.email ?? null;
 	const threadsForDoc = (useQuery(api.comments.listByDoc, { docId, includeResolved: true }) ?? []) as Array<{ thread: any; comments: any[] }>;
+
+	// Keep latest presence in a ref so the plugin can read it without recreating the editor
+	const presenceRef = useRef<any[]>(presence as any);
+	useEffect(() => { 
+		presenceRef.current = presence as any;
+	}, [presence]);
+
+	// Keep userId in a ref to avoid editor recreation
+	const userIdRef = useRef<string | null>(null);
+	useEffect(() => { 
+		userIdRef.current = userId;
+	}, [userId]);
 
 	const presenceMap = useMemo(() => {
 		const map: Record<string, { name: string; color: string }> = {};
@@ -28,9 +43,13 @@ export function BlockNoteEditorComponent({ docId, onEditorReady }: BlockNoteEdit
 		return map;
 	}, [presence]);
 
-	const resolveUsers = async (userIds: string[]): Promise<Array<{ id: string; username: string; avatarUrl: string }>> => {
-		return userIds.map((id) => ({ id, username: presenceMap[id]?.name ?? "User", avatarUrl: "" }));
-	};
+	const presenceMapRef = useRef<Record<string, { name: string; color: string }>>({});
+	useEffect(() => { presenceMapRef.current = presenceMap; }, [presenceMap]);
+
+	// Stable resolveUsers that reads from the ref (no editor re-instantiation on presence change)
+	const resolveUsers = useCallback(async (userIds: string[]): Promise<Array<{ id: string; username: string; avatarUrl: string }>> => {
+		return userIds.map((id) => ({ id, username: presenceMapRef.current[id]?.name ?? "User", avatarUrl: "" }));
+	}, []);
 
 	const createThreadMutation = useMutation(api.comments.createThread);
 	const addCommentMutation = useMutation(api.comments.createComment);
@@ -39,7 +58,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady }: BlockNoteEdit
 	const resolveThreadMutation = useMutation(api.comments.resolveThread);
 
 	const threadStore = useMemo(() => new ConvexThreadStore(docId, {
-		userId: "current",
+		userId: userId || "current",
 		createThread: ({ docId: d, blockId, content }) => createThreadMutation({ docId: d, blockId: blockId ?? "", content }) as any,
 		createComment: ({ docId: d, blockId, threadId, content }) => addCommentMutation({ docId: d, blockId: blockId ?? "", threadId, content }) as any,
 		updateComment: ({ commentId, content }) => updateCommentMutation({ commentId: commentId as any, content }) as any,
@@ -68,12 +87,16 @@ export function BlockNoteEditorComponent({ docId, onEditorReady }: BlockNoteEdit
 				extensions: [tiptapSync.extension],
 			},
 			_extensions: {
-				remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => presence as any) }),
+				remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => {
+					// Filter out current user's cursor
+					const filtered = (presenceRef.current as any[]).filter(p => p.userId !== userIdRef.current);
+					return filtered;
+				}) }),
 			},
 			initialContent: blocks.length > 0 ? blocks : undefined,
 		});
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [tiptapSync.initialContent, resolveUsers, threadStore, presence]);
+	// Only re-create when initial snapshot or thread store changes
+	}, [tiptapSync.initialContent, resolveUsers, threadStore]);
 
 	const sync = useMemo(() => ({
 		editor: editorFromSync,
@@ -82,12 +105,22 @@ export function BlockNoteEditorComponent({ docId, onEditorReady }: BlockNoteEdit
 	}), [editorFromSync, tiptapSync.isLoading, tiptapSync.create]);
 
 	const token = useAuthToken();
+	const colorRef = useRef<string>(`hsl(${Math.floor(Math.random() * 360)} 70% 45%)`);
+	const nameRef = useRef<string>("User");
+	
+	// Update nameRef when user email becomes available
+	useEffect(() => {
+		if (userEmail && nameRef.current === "User") {
+			nameRef.current = userEmail;
+		}
+	}, [userEmail]);
+	
 	const heartbeat = useMutation(api.presence.heartbeat);
 	useEffect(() => {
 		if (!token) return;
 		let active = true;
-		const color = `hsl(${Math.floor(Math.random() * 360)} 70% 45%)`;
-		const name = `User`;
+		const color = colorRef.current;
+		const name = nameRef.current;
 		const interval = setInterval(() => {
 			if (!active) return;
 			const pos = (sync as any)?.editor?.prosemirrorState?.selection?.head ?? 0;
