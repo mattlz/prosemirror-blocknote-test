@@ -18,6 +18,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	const [optionsOpen, setOptionsOpen] = useState<boolean>(false);
 	const [showRemoteCursors, setShowRemoteCursors] = useState<boolean>(true);
 
+	const [editorInstance, setEditorInstance] = useState<any>(null);
 	const editorRef = useRef<any>(null);
 	const createDocument = useMutation(api.documents.create);
 	const createPage = useMutation(api.pages.create);
@@ -79,6 +80,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 				commentsOpen={commentsOpen}
 				optionsOpen={optionsOpen}
 				onToggleOptions={() => setOptionsOpen((v) => !v)}
+				editor={editorInstance}
 			/>
 
 			<div className="flex h-[calc(100vh-theme(spacing.16))] relative overflow-hidden">
@@ -102,7 +104,10 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 									}} />
 									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
 								</div>
-								<BlockNoteEditor docId={pageDocId} showRemoteCursors={showRemoteCursors} onEditorReady={(e: any) => { editorRef.current = e; }} />
+								<BlockNoteEditor docId={pageDocId} showRemoteCursors={showRemoteCursors} onEditorReady={(e: any) => { 
+									editorRef.current = e; 
+									setEditorInstance(e);
+								}} />
 							</div>
 						</div>
 					)}
