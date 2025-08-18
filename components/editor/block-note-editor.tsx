@@ -181,7 +181,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			{(sync as any)?.isLoading ? (
 				<p style={{ padding: 16 }}>Loading…</p>
 			) : editorInst ? (
-				<BlockNoteView editor={editorInst} />
+				<BlockNoteView editor={editorInst} theme="light" />
 			) : (
 				<div style={{ padding: 16 }}>Editor not ready</div>
 			)}
