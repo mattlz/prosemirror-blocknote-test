@@ -1,19 +1,22 @@
 "use client";
 import { useEffect, useMemo, useRef, useCallback, type ReactElement } from "react";
 import { BlockNoteView } from "@blocknote/shadcn";
+import { SuggestionMenuController } from "@blocknote/react";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
-import { BlockNoteEditor, nodeToBlock } from "@blocknote/core";
+import { BlockNoteEditor, nodeToBlock, filterSuggestionItems } from "@blocknote/core";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexThreadStore } from "@/app/comments/convex-thread-store";
 import { useAuthToken } from "@convex-dev/auth/react";
 import { useTiptapSync } from "@convex-dev/prosemirror-sync/tiptap";
 import { createRemoteCursorPlugin } from "@/components/editor";
+import { customSchema, type CustomBlockNoteEditor } from "./custom-blocks/custom-schema";
+import { getCustomSlashMenuItems } from "./custom-blocks/slash-menu-items";
 
 interface BlockNoteEditorProps {
 	docId: string;
-	onEditorReady?: (editor: BlockNoteEditor) => void;
+	onEditorReady?: (editor: CustomBlockNoteEditor) => void;
 	showRemoteCursors?: boolean;
 }
 
@@ -86,7 +89,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			return clone;
 		}
 		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent as any);
-		const headless = BlockNoteEditor.create({ resolveUsers, _headless: true });
+		const headless = BlockNoteEditor.create({ schema: customSchema, resolveUsers, _headless: true });
 		const blocks: any[] = [];
 		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial as any);
 		if ((pmNode as any).firstChild) {
@@ -96,6 +99,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			});
 		}
 		return BlockNoteEditor.create({
+			schema: customSchema,
 			resolveUsers,
 			comments: { threadStore: threadStore as any },
 			_tiptapOptions: {
@@ -144,7 +148,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 		return () => { active = false; clearInterval(interval); };
 	}, [docId, heartbeat, token, (sync as any)?.editor]);
 
-	const editorInst: any = (sync as any)?.editor;
+	const editorInst = (sync as any)?.editor as CustomBlockNoteEditor | null;
 	useEffect(() => {
 		if (onEditorReady && editorInst) onEditorReady(editorInst);
 	}, [editorInst, onEditorReady]);
@@ -193,7 +197,14 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			{(sync as any)?.isLoading ? (
 				<p style={{ padding: 16 }}>Loading…</p>
 			) : editorInst ? (
-				<BlockNoteView editor={editorInst} theme="light" />
+				<BlockNoteView editor={editorInst} theme="light" slashMenu={false}>
+					<SuggestionMenuController
+						triggerCharacter="/"
+						getItems={async (query) =>
+							filterSuggestionItems(getCustomSlashMenuItems(editorInst as CustomBlockNoteEditor), query)
+						}
+					/>
+				</BlockNoteView>
 			) : (
 				<div style={{ padding: 16 }}>Editor not ready</div>
 			)}
