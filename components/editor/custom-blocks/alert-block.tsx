@@ -81,6 +81,7 @@ export const Alert = createReactBlockSpec(
       return (
         <div
           className="alert-block"
+          data-alert-type={blockType}
           style={{
             display: "flex",
             backgroundColor: alertType.backgroundColor,
@@ -127,14 +128,50 @@ export const Alert = createReactBlockSpec(
       }
       return undefined;
     },
-    // Simplify toExternalHTML - just return the element without contentDOM
-    // This prevents React rendering errors when dragging
-    toExternalHTML: () => {
-      // Return a simple div representation
-      // The actual content will be handled by BlockNote's serialization
-      const div = document.createElement("div");
-      div.className = "alert-block";
-      return div;
+    // Return a React element for external HTML serialization (e.g. drag/clipboard)
+    // Matching the structure of `render` avoids passing an HTMLElement into React.
+    toExternalHTML: (props): ReactElement => {
+      const blockType = (props.block.props as any)?.type || "info";
+      const alertType =
+        alertTypes.find((a) => a.value === blockType) || alertTypes[3];
+      const Icon = alertType.icon;
+
+      return (
+        <div
+          className="alert-block"
+          data-alert-type={blockType}
+          style={{
+            display: "flex",
+            backgroundColor: alertType.backgroundColor,
+            border: `1px solid ${alertType.borderColor}`,
+            borderRadius: "0.5rem",
+            padding: "0.75rem",
+            margin: "0.5rem 0",
+            alignItems: "flex-start",
+            gap: "0.75rem",
+            width: "100%",
+          }}
+        >
+          <div
+            className="alert-icon-wrapper"
+            style={{
+              color: alertType.color,
+              flexShrink: 0,
+              marginTop: "0.125rem",
+            }}
+          >
+            <Icon size={20} />
+          </div>
+          <div
+            ref={props.contentRef}
+            style={{
+              flex: 1,
+              color: alertType.color,
+              minHeight: "1.25rem",
+            }}
+          />
+        </div>
+      );
     },
   }
 );
