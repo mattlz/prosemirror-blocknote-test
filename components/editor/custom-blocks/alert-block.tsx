@@ -127,58 +127,14 @@ export const Alert = createReactBlockSpec(
       }
       return undefined;
     },
-    toExternalHTML: (block) => {
-      const blockType = (block.props as any)?.type || "info";
-      const alertType = alertTypes.find(
-        (a) => a.value === blockType
-      ) || alertTypes[3]; // Default to info if not found
-      
+    // Simplify toExternalHTML - just return the element without contentDOM
+    // This prevents React rendering errors when dragging
+    toExternalHTML: () => {
+      // Return a simple div representation
+      // The actual content will be handled by BlockNote's serialization
       const div = document.createElement("div");
       div.className = "alert-block";
-      div.setAttribute("data-alert-type", blockType);
-      div.style.cssText = `
-        display: flex;
-        background-color: ${alertType.backgroundColor};
-        border: 1px solid ${alertType.borderColor};
-        border-radius: 0.5rem;
-        padding: 0.75rem;
-        margin: 0.5rem 0;
-        align-items: flex-start;
-        gap: 0.75rem;
-      `;
-
-      const iconWrapper = document.createElement("div");
-      iconWrapper.style.cssText = `
-        color: ${alertType.color};
-        flex-shrink: 0;
-        margin-top: 0.125rem;
-      `;
-      iconWrapper.innerHTML = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-        ${
-          blockType === "success"
-            ? '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>'
-            : blockType === "warning"
-            ? '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>'
-            : blockType === "error"
-            ? '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>'
-            : '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>'
-        }
-      </svg>`;
-      
-      const content = document.createElement("div");
-      content.style.cssText = `
-        flex: 1;
-        color: ${alertType.color};
-        min-height: 1.25rem;
-      `;
-
-      div.appendChild(iconWrapper);
-      div.appendChild(content);
-      
-      return {
-        dom: div,
-        contentDOM: content,
-      };
+      return div;
     },
   }
 );
