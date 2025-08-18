@@ -6,6 +6,7 @@ import CommentsSidebar from "@/app/comments/comments-sidebar";
 import { BlockNoteEditor } from "@/components/editor";
 import { PageSidebar, IconPicker } from "@/components/sidebar";
 import { TopBar, SidebarOpenButton } from "@/components/layout";
+import { PageOptionsModal } from "@/components/modals/page-options-modal";
 
 export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null }): ReactElement {
 	const [documentId, setDocumentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);
@@ -14,6 +15,9 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
 	const [showOpenButton, setShowOpenButton] = useState<boolean>(false);
 	const [commentsOpen, setCommentsOpen] = useState<boolean>(false);
+	const [optionsOpen, setOptionsOpen] = useState<boolean>(false);
+	const [showRemoteCursors, setShowRemoteCursors] = useState<boolean>(true);
+
 	const editorRef = useRef<any>(null);
 	const createDocument = useMutation(api.documents.create);
 	const createPage = useMutation(api.pages.create);
@@ -68,7 +72,14 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 
 	return (
 		<div className="min-h-screen w-full overflow-hidden">
-			<TopBar documentTitle={documentTitle} docId={pageDocId} onToggleComments={() => setCommentsOpen((v) => !v)} commentsOpen={commentsOpen} />
+			<TopBar
+				documentTitle={documentTitle}
+				docId={pageDocId}
+				onToggleComments={() => setCommentsOpen((v) => !v)}
+				commentsOpen={commentsOpen}
+				optionsOpen={optionsOpen}
+				onToggleOptions={() => setOptionsOpen((v) => !v)}
+			/>
 
 			<div className="flex h-[calc(100vh-theme(spacing.16))] relative overflow-hidden">
 				<div className={`transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -91,7 +102,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 									}} />
 									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
 								</div>
-								<BlockNoteEditor docId={pageDocId} onEditorReady={(e: any) => { editorRef.current = e; }} />
+								<BlockNoteEditor docId={pageDocId} showRemoteCursors={showRemoteCursors} onEditorReady={(e: any) => { editorRef.current = e; }} />
 							</div>
 						</div>
 					)}
@@ -136,6 +147,12 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 					/>
 				) : null}
 			</div>
+			<PageOptionsModal
+				isOpen={optionsOpen}
+				onClose={() => setOptionsOpen(false)}
+				showRemoteCursors={showRemoteCursors}
+				onToggleRemoteCursors={setShowRemoteCursors}
+			/>
 		</div>
 	);
 }

@@ -14,9 +14,10 @@ import { createRemoteCursorPlugin } from "@/components/editor";
 interface BlockNoteEditorProps {
 	docId: string;
 	onEditorReady?: (editor: BlockNoteEditor) => void;
+	showRemoteCursors?: boolean;
 }
 
-export function BlockNoteEditorComponent({ docId, onEditorReady }: BlockNoteEditorProps): ReactElement {
+export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCursors = true }: BlockNoteEditorProps): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
 	const me = useQuery(api.comments.me, {});
 	const userId = (me as any)?.userId ?? null;
@@ -88,7 +89,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady }: BlockNoteEdit
 			},
 			_extensions: {
 				remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => {
-					// Filter out current user's cursor
+					if (!showRemoteCursors) return [] as any[];
 					const filtered = (presenceRef.current as any[]).filter(p => p.userId !== userIdRef.current);
 					return filtered;
 				}) }),
@@ -96,7 +97,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady }: BlockNoteEdit
 			initialContent: blocks.length > 0 ? blocks : undefined,
 		});
 	// Only re-create when initial snapshot or thread store changes
-	}, [tiptapSync.initialContent, resolveUsers, threadStore]);
+	}, [tiptapSync.initialContent, resolveUsers, threadStore, showRemoteCursors]);
 
 	const sync = useMemo(() => ({
 		editor: editorFromSync,
