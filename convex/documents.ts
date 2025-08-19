@@ -1,5 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { components } from "./_generated/api";
+import { ProsemirrorSync } from "@convex-dev/prosemirror-sync";
+
+const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
+
+function randomId(): string {
+	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export const list = query({
     args: {},
@@ -13,7 +21,22 @@ export const create = mutation({
     handler: async (ctx, { title }) => {
         const now = Date.now();
         const id = await ctx.db.insert("documents", { title, createdAt: now });
-        return id;
+        
+        // Automatically create a default page when document is created
+        const docId = randomId();
+        const pageId = await ctx.db.insert("pages", { 
+            documentId: id, 
+            parentPageId: undefined, 
+            docId, 
+            title, 
+            order: 1, 
+            createdAt: now 
+        });
+        
+        // Create an empty doc server-side so clients can open immediately without calling sync.create
+        await prosemirrorSync.create(ctx, docId, { type: "doc", content: [] });
+        
+        return { documentId: id, pageId, docId };
     },
 });
 

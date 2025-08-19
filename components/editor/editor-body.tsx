@@ -9,7 +9,7 @@ import { TopBar, SidebarOpenButton } from "@/components/layout";
 import { PageOptionsModal } from "@/components/modals/page-options-modal";
 
 export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null }): ReactElement {
-	const [documentId, setDocumentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);
+	const [documentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);
 	const [pageDocId, setPageDocId] = useState<string | null>(null);
 	
 	const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
@@ -20,22 +20,9 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 
 	const [editorInstance, setEditorInstance] = useState<any>(null);
 	const editorRef = useRef<any>(null);
-	const createDocument = useMutation(api.documents.create);
 	const createPage = useMutation(api.pages.create);
 	const setIconMutation = useMutation(api.pages.setIcon);
 	const createThreadMutation = useMutation(api.comments.createThread);
-
-	const onCreateDocument = async (): Promise<void> => {
-		const title = prompt("New document title", "Untitled Document") || "Untitled Document";
-		const id = await createDocument({ title });
-		setDocumentId(id as any);
-		try {
-			const { docId } = await createPage({ documentId: id as any, title: "Untitled" });
-			setPageDocId(docId);
-		} catch {
-			setPageDocId(null);
-		}
-	};
 
 	const onCreatePage = async (): Promise<void> => {
 		if (!documentId) return;
@@ -49,9 +36,6 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	
 	const documentTitle = useMemo(() => (documents as any[]).find((d) => d._id === documentId)?.title ?? "All docs", [documents, documentId]);
 	const currentPageTitle = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId)?.title ?? "Untitled", [pages, pageDocId]);
-	const currentPage = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId), [pages, pageDocId]);
-
-	const lastDocIdRef = useRef<string | null>(null);
 
 	useEffect(() => {
 		if (!documentId) return;

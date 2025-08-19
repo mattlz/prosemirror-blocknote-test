@@ -25,7 +25,10 @@ export default function DocsPage(): ReactElement {
 					<input className="h-9 rounded-md border px-3" placeholder="Search…" value={filter} onChange={(e) => setFilter(e.target.value)} />
 					<button className="inline-flex h-9 items-center rounded-md border px-3" onClick={async () => {
 						const title = prompt("New document title", "Untitled Document") || "Untitled Document";
-						await create({ title });
+						const { documentId: id } = await create({ title });
+						
+						// Redirect to the new document editor
+						router.push(`/docs/${id}`);
 					}}>New</button>
 					<button className="inline-flex h-9 items-center rounded-md border px-3" onClick={async () => { await signOut(); router.replace("/signin"); }}>Sign out</button>
 				</div>
