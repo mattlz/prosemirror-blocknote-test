@@ -19,23 +19,61 @@ export const list = query({
 export const create = mutation({
     args: { title: v.string() },
     handler: async (ctx, { title }) => {
-        const now = Date.now();
-        const id = await ctx.db.insert("documents", { title, createdAt: now });
-        
-        // Automatically create a default page when document is created
-        const docId = randomId();
-        const pageId = await ctx.db.insert("pages", { 
-            documentId: id, 
-            parentPageId: undefined, 
-            docId, 
-            title, 
-            order: 1, 
-            createdAt: now 
+        console.log("🆕 CREATING DOCUMENT:", {
+            title,
+            timestamp: new Date().toISOString()
         });
         
-        // Create an empty doc server-side so clients can open immediately without calling sync.create
+        const now = Date.now();
+        const id = await ctx.db.insert("documents", {
+            title,
+            createdAt: now,
+        });
+        
+        console.log("✅ DOCUMENT CREATED:", {
+            documentId: id,
+            title,
+            timestamp: new Date().toISOString()
+        });
+
+        // Create a default page for this document
+        const pageId = await ctx.db.insert("pages", {
+            title,
+            documentId: id,
+            order: 0,
+            parentPageId: undefined,
+            docId: "", // Will be updated after ProseMirror doc creation
+            createdAt: now,
+        });
+        
+        console.log("✅ DEFAULT PAGE CREATED:", {
+            pageId,
+            documentId: id,
+            title,
+            timestamp: new Date().toISOString()
+        });
+
+        // Create a ProseMirror document for this page
+        const docId = randomId();
         await prosemirrorSync.create(ctx, docId, { type: "doc", content: [] });
         
+        console.log("✅ PROSEMIRROR DOC CREATED:", {
+            docId,
+            pageId,
+            documentId: id,
+            timestamp: new Date().toISOString()
+        });
+
+        // Update the page with the docId
+        await ctx.db.patch(pageId, { docId });
+        
+        console.log("✅ PAGE UPDATED WITH DOCID:", {
+            pageId,
+            docId,
+            documentId: id,
+            timestamp: new Date().toISOString()
+        });
+
         return { documentId: id, pageId, docId };
     },
 });
