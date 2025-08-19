@@ -1,15 +1,12 @@
 "use client";
 import { useState, useRef, useEffect, type ReactElement } from "react";
 import { 
-  AlertCircle, 
-  CheckCircle2, 
-  Info, 
-  XCircle, 
+  Info,
   Plus,
   ChevronDown 
 } from "lucide-react";
-import { insertOrUpdateBlock } from "@blocknote/core";
-import type { CustomBlockNoteEditor } from "./custom-schema";
+import { insertOrUpdateBlock, BlockNoteEditor } from "@blocknote/core";
+import { customSchema, type CustomBlockNoteEditor } from "./custom-schema";
 
 interface BlockInsertButtonProps {
   editor: CustomBlockNoteEditor | null;
@@ -17,56 +14,8 @@ interface BlockInsertButtonProps {
 
 const blockTypes = [
   {
-    id: "alert-success",
-    label: "Success Alert",
-    icon: <CheckCircle2 size={16} className="text-green-600" />,
-    action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
-      insertOrUpdateBlock(editor, {
-        type: "alert",
-        props: { type: "success" },
-        content: [{
-          type: "text",
-          text: "Great job! Your operation completed successfully.",
-          styles: {},
-        }],
-      });
-    },
-  },
-  {
-    id: "alert-warning",
-    label: "Warning Alert",
-    icon: <AlertCircle size={16} className="text-yellow-600" />,
-    action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
-      insertOrUpdateBlock(editor, {
-        type: "alert",
-        props: { type: "warning" },
-        content: [{
-          type: "text",
-          text: "Please note: This action may have unintended consequences.",
-          styles: {},
-        }],
-      });
-    },
-  },
-  {
-    id: "alert-error",
-    label: "Error Alert",
-    icon: <XCircle size={16} className="text-red-600" />,
-    action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
-      insertOrUpdateBlock(editor, {
-        type: "alert",
-        props: { type: "error" },
-        content: [{
-          type: "text",
-          text: "Error: Something went wrong. Please try again.",
-          styles: {},
-        }],
-      });
-    },
-  },
-  {
-    id: "alert-info",
-    label: "Info Alert",
+    id: "alert",
+    label: "Alert",
     icon: <Info size={16} className="text-blue-600" />,
     action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
       insertOrUpdateBlock(editor, {
@@ -74,7 +23,7 @@ const blockTypes = [
         props: { type: "info" },
         content: [{
           type: "text",
-          text: "This is some helpful information you should know about.",
+          text: "Alert",
           styles: {},
         }],
       });
@@ -116,9 +65,7 @@ export function BlockInsertButton({ editor }: BlockInsertButtonProps): ReactElem
       {isOpen && (
         <div className="absolute top-full left-0 mt-1 w-48 rounded-lg border border-neutral-200 bg-white shadow-lg z-50">
           <div className="p-1">
-            <div className="px-2 py-1.5 text-xs font-semibold text-neutral-500 uppercase">
-              Alert Blocks
-            </div>
+            <div className="px-2 py-1.5 text-xs font-semibold text-neutral-500 uppercase">Custom Blocks</div>
             {blockTypes.map((block) => (
               <button
                 key={block.id}
