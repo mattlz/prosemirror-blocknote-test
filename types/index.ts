@@ -1,1 +1,6 @@
-export * from "./auth";\nexport * from "./documents";\nexport * from "./pages";\nexport * from "./comments";\nexport * from "./editor";\nexport * from "./api";\n
+export * from "./auth";
+export * from "./documents";
+export * from "./pages";
+export * from "./comments";
+export * from "./editor";
+export * from "./api";

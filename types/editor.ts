@@ -1,1 +1,1 @@
-export type EditorInitError = Error | null;\n
+export type EditorInitError = Error | null;
