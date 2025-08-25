@@ -10,8 +10,8 @@
 
 import type * as auth from "../auth.js";
 import type * as comments from "../comments.js";
+import type * as document_sync_api from "../document_sync_api.js";
 import type * as documents from "../documents.js";
-import type * as example from "../example.js";
 import type * as http from "../http.js";
 import type * as migrations from "../migrations.js";
 import type * as pages from "../pages.js";
@@ -34,8 +34,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   comments: typeof comments;
+  document_sync_api: typeof document_sync_api;
   documents: typeof documents;
-  example: typeof example;
   http: typeof http;
   migrations: typeof migrations;
   pages: typeof pages;

@@ -72,11 +72,11 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 		resolveThread: ({ threadId, resolved }) => resolveThreadMutation({ threadId, resolved }) as any,
 	}), [docId, createThreadMutation, addCommentMutation, updateCommentMutation, deleteCommentMutation, resolveThreadMutation]);
 
-	const tiptapSync = useTiptapSync(api.example, docId, { snapshotDebounceMs: 1000 });
+	const tiptapSync = useTiptapSync(api.document_sync_api, docId, { snapshotDebounceMs: 1000 });
 
 	// Expose a manual save that mirrors autosave by submitting a snapshot immediately
-	const latestVersion = useQuery(api.example.latestVersion, { id: docId }) as number | null;
-	const submitSnapshot = useMutation(api.example.submitSnapshot);
+	const latestVersion = useQuery(api.document_sync_api.latestVersion, { id: docId }) as number | null;
+	const submitSnapshot = useMutation(api.document_sync_api.submitSnapshot);
 
 	const editorFromSync = useMemo(() => {
 		if (tiptapSync.initialContent === null) return null;
