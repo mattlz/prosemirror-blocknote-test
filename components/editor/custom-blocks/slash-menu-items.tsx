@@ -4,7 +4,7 @@ import {
   getDefaultReactSlashMenuItems,
 } from "@blocknote/react";
 import { insertOrUpdateBlock, BlockNoteEditor } from "@blocknote/core";
-import { Info, Table, FileText } from "lucide-react";
+import { Info, Table, FileText, Calendar } from "lucide-react";
 import { customSchema } from "./custom-schema";
 import type { ReactElement } from "react";
 
@@ -64,5 +64,21 @@ export const getCustomSlashMenuItems = (
     group: "Custom Blocks",
     icon: <FileText size={18} className="text-purple-600" />,
     subtext: "Insert a document metadata card",
+  },
+
+  // Weekly Update block
+  {
+    title: "Weekly Update",
+    onItemClick: () => {
+      insertOrUpdateBlock(editor, {
+        type: "weeklyupdate",
+        props: { docId: ((editor as any)?.options as any)?.comments?.threadStore?.docId ?? "" },
+        content: [],
+      });
+    },
+    aliases: ["weekly", "status", "update"],
+    group: "Custom Blocks",
+    icon: <Calendar size={18} className="text-orange-600" />,
+    subtext: "Insert weekly updates list for this page",
   },
 ];

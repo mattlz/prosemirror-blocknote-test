@@ -59,4 +59,15 @@ export default defineSchema({
 	})
 		.index("by_doc", ["docId"]) 
 		.index("by_block", ["blockId"]),
+
+	weeklyUpdates: defineTable({
+		docId: v.string(),
+		accomplished: v.string(),
+		focus: v.string(),
+		blockers: v.string(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+		authorId: v.optional(v.string()),
+	})
+		.index("by_doc", ["docId"]),
 });

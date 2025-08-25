@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Table,
   FileText,
+  Calendar,
 } from "lucide-react";
 import { insertOrUpdateBlock, BlockNoteEditor } from "@blocknote/core";
 import { customSchema, type CustomBlockNoteEditor } from "./custom-schema";
@@ -51,6 +52,19 @@ const blockTypes = [
       insertOrUpdateBlock(editor, {
         type: "metadata",
         props: { documentId: "" },
+        content: [],
+      });
+    },
+  },
+  {
+    id: "weeklyupdate",
+    label: "Weekly Update",
+    icon: <Calendar size={16} className="text-orange-600" />,
+    action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
+      const docId = (((editor as any)?.options as any)?.comments?.threadStore?.docId) ?? "";
+      insertOrUpdateBlock(editor, {
+        type: "weeklyupdate",
+        props: { docId },
         content: [],
       });
     },
