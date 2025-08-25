@@ -5,92 +5,88 @@ import { SuggestionMenuController } from "@blocknote/react";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
 import { BlockNoteEditor, nodeToBlock, filterSuggestionItems } from "@blocknote/core";
-import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
-import { ConvexThreadStore } from "@/app/comments/convex-thread-store";
+import type { PMNode } from "@/types";
+import { useEditorPresence, useEditorUser, useEditorComments, useEditorSync } from "@/hooks";
 import { useAuthToken } from "@convex-dev/auth/react";
-import { useTiptapSync } from "@convex-dev/prosemirror-sync/tiptap";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { createRemoteCursorPlugin } from "@/components/editor";
 import { customSchema, type CustomBlockNoteEditor } from "./custom-blocks/custom-schema";
 import { getCustomSlashMenuItems } from "./custom-blocks/slash-menu-items";
 
 interface BlockNoteEditorProps {
+	/** Unique identifier for the document to edit */
 	docId: string;
+	/** Callback fired when the editor is fully initialized and ready */
 	onEditorReady?: (editor: CustomBlockNoteEditor) => void;
+	/** Whether to display other users' cursors in real-time */
 	showRemoteCursors?: boolean;
+	/** Whether the editor content can be modified */
 	editable?: boolean;
+	/** Visual theme for the editor */
 	theme?: "light" | "dark";
 }
 
+/**
+ * BlockNoteEditorComponent - A collaborative rich text editor with real-time sync
+ * 
+ * @remarks
+ * This component provides a full-featured collaborative editor built on BlockNote
+ * with real-time synchronization via Convex, presence awareness, and commenting.
+ * 
+ * Features:
+ * - Real-time collaborative editing
+ * - Auto-save with manual save capability
+ * - Comments and threaded discussions
+ * - Presence awareness (remote cursors)
+ * - Custom blocks (alerts, tables, etc.)
+ * - Light/dark theme support
+ * 
+ * @param props - Editor configuration options
+ * @returns A collaborative editor component
+ * 
+ * @example
+ * ```tsx
+ * <BlockNoteEditorComponent
+ *   docId="doc-123"
+ *   onEditorReady={(editor) => console.log('Editor ready!')}
+ *   showRemoteCursors={true}
+ *   theme="light"
+ * />
+ * ```
+ */
 export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCursors = true, editable = true, theme = "light" }: BlockNoteEditorProps): ReactElement {
-	const presence = useQuery(api.presence.list, { docId }) ?? [];
-	const me = useQuery(api.comments.me, {});
-	const userId = (me as any)?.userId ?? null;
-	const userEmail = (me as any)?.email ?? null;
-	const threadsForDoc = (useQuery(api.comments.listByDoc, { docId, includeResolved: true }) ?? []) as Array<{ thread: any; comments: any[] }>;
-
-	// Keep latest presence in a ref so the plugin can read it without recreating the editor
-	const presenceRef = useRef<any[]>(presence as any);
-	useEffect(() => { 
-		presenceRef.current = presence as any;
-	}, [presence]);
-
-	// Keep userId in a ref to avoid editor recreation
-	const userIdRef = useRef<string | null>(null);
-	useEffect(() => { 
-		userIdRef.current = userId;
-	}, [userId]);
-
-	const presenceMap = useMemo(() => {
-		const map: Record<string, { name: string; color: string }> = {};
-		for (const p of presence as any[]) {
-			map[(p as any).userId] = { name: (p as any).name, color: (p as any).color };
-		}
-		return map;
-	}, [presence]);
-
-	const presenceMapRef = useRef<Record<string, { name: string; color: string }>>({});
-	useEffect(() => { presenceMapRef.current = presenceMap; }, [presenceMap]);
+	// Extract user data
+	const { userId, userEmail, userIdRef } = useEditorUser();
+	
+	// Extract presence data
+	const { presence, presenceRef, presenceMapRef } = useEditorPresence(docId);
+	
+	// Extract comments data
+	const { threadsForDoc, threadStore } = useEditorComments(docId, userId);
+	
+	// Extract sync functionality
+	const { tiptapSync, latestVersion, manualSave } = useEditorSync(docId);
 
 	// Stable resolveUsers that reads from the ref (no editor re-instantiation on presence change)
 	const resolveUsers = useCallback(async (userIds: string[]): Promise<Array<{ id: string; username: string; avatarUrl: string }>> => {
 		return userIds.map((id) => ({ id, username: presenceMapRef.current[id]?.name ?? "User", avatarUrl: "" }));
 	}, []);
 
-	const createThreadMutation = useMutation(api.comments.createThread);
-	const addCommentMutation = useMutation(api.comments.createComment);
-	const updateCommentMutation = useMutation(api.comments.updateComment);
-	const deleteCommentMutation = useMutation(api.comments.deleteComment);
-	const resolveThreadMutation = useMutation(api.comments.resolveThread);
-
-	const threadStore = useMemo(() => new ConvexThreadStore(docId, {
-		userId: userId || "current",
-		createThread: ({ docId: d, blockId, content }) => createThreadMutation({ docId: d, blockId: blockId ?? "", content }) as any,
-		createComment: ({ docId: d, blockId, threadId, content }) => addCommentMutation({ docId: d, blockId: blockId ?? "", threadId, content }) as any,
-		updateComment: ({ commentId, content }) => updateCommentMutation({ commentId: commentId as any, content }) as any,
-		deleteComment: ({ commentId }) => deleteCommentMutation({ commentId: commentId as any }) as any,
-		resolveThread: ({ threadId, resolved }) => resolveThreadMutation({ threadId, resolved }) as any,
-	}), [docId, createThreadMutation, addCommentMutation, updateCommentMutation, deleteCommentMutation, resolveThreadMutation]);
-
-	const tiptapSync = useTiptapSync(api.document_sync_api, docId, { snapshotDebounceMs: 1000 });
-
-	// Expose a manual save that mirrors autosave by submitting a snapshot immediately
-	const latestVersion = useQuery(api.document_sync_api.latestVersion, { id: docId }) as number | null;
-	const submitSnapshot = useMutation(api.document_sync_api.submitSnapshot);
 
 	const editorFromSync = useMemo(() => {
 		if (tiptapSync.initialContent === null) return null;
 		// Headless editor for PM->BlockNote conversion only (no comments in headless)
 		// The TipTap snapshot may include a PM mark type named "comment" which
 		// doesn't exist in BlockNote's headless schema. Strip those marks first.
-		function stripUnsupportedMarks(node: any): any {
+		function stripUnsupportedMarks(node: unknown): unknown {
 			if (!node || typeof node !== "object") return node;
-			const clone: any = { ...node };
+			const clone = { ...node as PMNode };
 			if (Array.isArray(clone.marks)) {
-				clone.marks = clone.marks.filter((m: any) => m?.type !== "comment");
+				clone.marks = clone.marks.filter(m => m?.type !== "comment");
 			}
 			if (Array.isArray(clone.content)) {
-				clone.content = clone.content.map(stripUnsupportedMarks);
+				clone.content = clone.content.map(stripUnsupportedMarks) as PMNode[];
 			}
 			return clone;
 		}
@@ -164,13 +160,9 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 		if (!editorInst) return;
 		(editorInst as any).manualSave = async (): Promise<void> => {
 			try {
-				const pmEditor = (editorInst as any)?.prosemirrorEditor;
-				const docJson = pmEditor?.state?.doc?.toJSON();
-				if (!docJson) return;
-				const version: number = (latestVersion ?? 0) as number;
-				await submitSnapshot({ id: docId, version, content: JSON.stringify(docJson) } as any);
+				await manualSave(editorInst);
 				if (typeof window !== "undefined") {
-					window.dispatchEvent(new CustomEvent("doc-saved", { detail: { docId, version: (version ?? 0) + 1, ts: Date.now(), source: "manual" } }));
+					window.dispatchEvent(new CustomEvent("doc-saved", { detail: { docId, ts: Date.now(), source: "manual" } }));
 				}
 			} catch {
 				if (typeof window !== "undefined") {
@@ -178,7 +170,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 				}
 			}
 		};
-	}, [editorInst, latestVersion, submitSnapshot, docId]);
+	}, [editorInst, manualSave, docId]);
 
 	// When the synced version changes (autosave or collaborative updates), broadcast a saved event
 	const lastVersionRef = useRef<number | null>(null);

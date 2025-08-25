@@ -5,3 +5,6 @@ export * from "./comments";
 export * from "./editor";
 export * from "./api";
 export * from "./presence";
+export * from "./editor.types";
+export * from "./comments.types";
+export * from "./prosemirror.types";
