@@ -1,6 +1,6 @@
 "use client";
 import type { ReactElement } from "react";
-import { ArrowLeft, MessageCircle, PanelLeftOpen, Settings, Share2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, PanelLeftOpen, Settings, Share2, Save } from "lucide-react";
 import { PresenceAvatars } from "@/components/editor";
 import { BlockInsertButton } from "@/components/editor/custom-blocks/block-insert-button";
 import { useMutation, useQuery } from "convex/react";
@@ -51,6 +51,12 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 		optionsOpen ? (isDark ? "bg-neutral-800" : "bg-neutral-100") : (isDark ? "bg-neutral-900" : "bg-white"),
 	].join(" ");
 
+	const iconBtnClass = [
+		"inline-flex h-8 w-8 items-center justify-center rounded-md border",
+		borderClass,
+		isDark ? "bg-neutral-900 hover:bg-neutral-800" : "bg-white hover:bg-neutral-100",
+	].join(" ");
+
 	return (
 		<div className={containerClass}>
 			{!readOnly ? (
@@ -59,10 +65,55 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 			<div className="text-lg font-semibold">{documentTitle}</div>
 			<div className="ml-auto flex items-center gap-2">
 				{!readOnly && editor ? <BlockInsertButton editor={editor} /> : null}
-				<button aria-label="Comments" className={commentsBtnClass} onClick={onToggleComments}><MessageCircle className="h-4 w-4" /></button>
+				{!readOnly && editor ? (
+					<button
+						aria-label="Save"
+						className={iconBtnClass}
+						onClick={async () => {
+							try {
+								await (editor as any)?.manualSave?.();
+								// Lightweight toast without external lib
+								const t = document.createElement("div");
+								t.textContent = "Saved";
+								t.style.position = "fixed";
+								t.style.right = "16px";
+								t.style.bottom = "16px";
+								t.style.padding = "8px 12px";
+								t.style.borderRadius = "6px";
+								t.style.fontSize = "14px";
+								t.style.zIndex = "9999";
+								t.style.color = isDark ? "#111827" : "#111827";
+								t.style.background = isDark ? "#86efac" : "#bbf7d0";
+								document.body.appendChild(t);
+								setTimeout(() => {
+									try { document.body.removeChild(t); } catch {}
+								}, 1500);
+							} catch (e) {
+								const t = document.createElement("div");
+								t.textContent = "Save failed";
+								t.style.position = "fixed";
+								t.style.right = "16px";
+								t.style.bottom = "16px";
+								t.style.padding = "8px 12px";
+								t.style.borderRadius = "6px";
+								t.style.fontSize = "14px";
+								t.style.zIndex = "9999";
+								t.style.color = "#fff";
+								t.style.background = "#ef4444";
+								document.body.appendChild(t);
+								setTimeout(() => {
+									try { document.body.removeChild(t); } catch {}
+								}, 2000);
+							}
+						}}
+					>
+						<Save className="h-4 w-4" />
+					</button>
+				) : null}
 				{!readOnly ? (
 					<button aria-label="Page options" className={optionsBtnClass} onClick={onToggleOptions}><Settings className="h-4 w-4" /></button>
 				) : null}
+				<button aria-label="Comments" className={commentsBtnClass} onClick={onToggleComments}><MessageCircle className="h-4 w-4" /></button>
 				{!readOnly ? <PresenceAvatars docId={docId} /> : null}
 				<div>
 					<Button

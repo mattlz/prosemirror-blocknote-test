@@ -22,6 +22,8 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 
 	const [editorInstance, setEditorInstance] = useState<any>(null);
 	const editorRef = useRef<any>(null);
+	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+	const [saveErrorAt, setSaveErrorAt] = useState<number | null>(null);
 	const createPage = useMutation(api.pages.create);
 	const setIconMutation = useMutation(api.pages.setIcon);
 	const createThreadMutation = useMutation(api.comments.createThread);
@@ -57,6 +59,50 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 		}
 	}, [sidebarOpen]);
 
+	// Listen for global save events from the editor (manual + autosave)
+	useEffect(() => {
+		const onSaved = (e: any) => {
+			if (!pageDocId || e?.detail?.docId !== pageDocId) return;
+			setLastSavedAt(Date.now());
+			setSaveErrorAt(null);
+		};
+		const onSaveError = (e: any) => {
+			if (!pageDocId || e?.detail?.docId !== pageDocId) return;
+			setSaveErrorAt(Date.now());
+		};
+		if (typeof window !== "undefined") {
+			window.addEventListener("doc-saved", onSaved as any);
+			window.addEventListener("doc-save-error", onSaveError as any);
+		}
+		return () => {
+			if (typeof window !== "undefined") {
+				window.removeEventListener("doc-saved", onSaved as any);
+				window.removeEventListener("doc-save-error", onSaveError as any);
+			}
+		};
+	}, [pageDocId]);
+
+	// Periodic tick so relative time updates even without new saves
+	useEffect(() => {
+		const interval = setInterval(() => {
+			// trigger a render by toggling a state that we don't otherwise use
+			setLastSavedAt((v) => (v !== null ? v : v));
+		}, 10000);
+		return () => clearInterval(interval);
+	}, []);
+
+	function formatRelative(ts: number | null): string {
+		if (!ts) return "";
+		const seconds = Math.floor((Date.now() - ts) / 1000);
+		if (seconds < 60) return "Just now";
+		const minutes = Math.floor(seconds / 60);
+		if (minutes < 60) return `${minutes}m ago`;
+		const hours = Math.floor(minutes / 60);
+		if (hours < 24) return `${hours}h ago`;
+		const days = Math.floor(hours / 24);
+		return `${days}d ago`;
+	}
+
 	return (
 		<div className="h-screen w-full overflow-hidden flex flex-col">
 			<TopBar
@@ -75,7 +121,18 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 			<div className="flex flex-1 relative overflow-hidden min-h-0">
 				<div className={`transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-64' : 'w-0'} overflow-hidden`}>
 					<div className={`h-full transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-						<PageSidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} onCollapse={() => setSidebarOpen(false)} theme={theme} />
+						<div className="h-full relative">
+							<PageSidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} onCollapse={() => setSidebarOpen(false)} theme={theme} />
+							<div className="absolute left-2 right-2 bottom-2 text-[11px] text-neutral-500">
+								{saveErrorAt ? (
+									<div className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-red-700">Save failed. Retrying…</div>
+								) : (
+									<div className="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1">
+										{lastSavedAt ? `Last saved ${formatRelative(lastSavedAt)}` : "Waiting for first save…"}
+									</div>
+								)}
+							</div>
+						</div>
 					</div>
 				</div>
 				{showOpenButton && (

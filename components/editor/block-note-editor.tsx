@@ -74,6 +74,10 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 
 	const tiptapSync = useTiptapSync(api.example, docId, { snapshotDebounceMs: 1000 });
 
+	// Expose a manual save that mirrors autosave by submitting a snapshot immediately
+	const latestVersion = useQuery(api.example.latestVersion, { id: docId }) as number | null;
+	const submitSnapshot = useMutation(api.example.submitSnapshot);
+
 	const editorFromSync = useMemo(() => {
 		if (tiptapSync.initialContent === null) return null;
 		// Headless editor for PM->BlockNote conversion only (no comments in headless)
@@ -154,6 +158,43 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	useEffect(() => {
 		if (onEditorReady && editorInst) onEditorReady(editorInst);
 	}, [editorInst, onEditorReady]);
+
+	// Attach a manualSave method onto the editor instance so external UI can trigger it
+	useEffect(() => {
+		if (!editorInst) return;
+		(editorInst as any).manualSave = async (): Promise<void> => {
+			try {
+				const pmEditor = (editorInst as any)?.prosemirrorEditor;
+				const docJson = pmEditor?.state?.doc?.toJSON();
+				if (!docJson) return;
+				const version: number = (latestVersion ?? 0) as number;
+				await submitSnapshot({ id: docId, version, content: JSON.stringify(docJson) } as any);
+				if (typeof window !== "undefined") {
+					window.dispatchEvent(new CustomEvent("doc-saved", { detail: { docId, version: (version ?? 0) + 1, ts: Date.now(), source: "manual" } }));
+				}
+			} catch {
+				if (typeof window !== "undefined") {
+					window.dispatchEvent(new CustomEvent("doc-save-error", { detail: { docId, ts: Date.now(), source: "manual" } }));
+				}
+			}
+		};
+	}, [editorInst, latestVersion, submitSnapshot, docId]);
+
+	// When the synced version changes (autosave or collaborative updates), broadcast a saved event
+	const lastVersionRef = useRef<number | null>(null);
+	useEffect(() => {
+		if (typeof latestVersion !== "number") return;
+		if (lastVersionRef.current === null) {
+			lastVersionRef.current = latestVersion;
+			return;
+		}
+		if (latestVersion !== lastVersionRef.current) {
+			lastVersionRef.current = latestVersion;
+			if (typeof window !== "undefined") {
+				window.dispatchEvent(new CustomEvent("doc-saved", { detail: { docId, version: latestVersion, ts: Date.now(), source: "auto" } }));
+			}
+		}
+	}, [latestVersion, docId]);
 
 	// Add logging for Tiptap sync state changes
 	useEffect(() => {
