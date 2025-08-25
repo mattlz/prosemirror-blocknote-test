@@ -58,7 +58,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	}, [sidebarOpen]);
 
 	return (
-		<div className="min-h-screen w-full overflow-hidden">
+		<div className="h-screen w-full overflow-hidden flex flex-col">
 			<TopBar
 				documentTitle={documentTitle}
 				docId={pageDocId}
@@ -72,7 +72,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 				theme={theme}
 			/>
 
-			<div className="flex h-[calc(100vh-theme(spacing.16))] relative overflow-hidden">
+			<div className="flex flex-1 relative overflow-hidden min-h-0">
 				<div className={`transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-64' : 'w-0'} overflow-hidden`}>
 					<div className={`h-full transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
 						<PageSidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} onCollapse={() => setSidebarOpen(false)} theme={theme} />
