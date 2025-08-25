@@ -3,8 +3,8 @@ import { useMemo, useState, type ReactElement } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
-export default function CommentsSidebar(props: { docId: string; onJumpToBlock?: (blockId: string) => void; onCreateThread?: (content: string) => void | Promise<void> }): ReactElement {
-  const { docId, onJumpToBlock, onCreateThread } = props;
+export default function CommentsSidebar(props: { docId: string; readOnly?: boolean; onJumpToBlock?: (blockId: string) => void; onCreateThread?: (content: string) => void | Promise<void> }): ReactElement {
+  const { docId, readOnly = false, onJumpToBlock, onCreateThread } = props;
   const [filter, setFilter] = useState<"all" | "open" | "resolved">("all");
   const includeResolved = filter !== "open";
   const threads = (useQuery(api.comments.listByDoc, { docId, includeResolved }) ?? []) as Array<{ thread: any; comments: any[] }>;
@@ -46,7 +46,7 @@ export default function CommentsSidebar(props: { docId: string; onJumpToBlock?: 
           <button className={["px-2 py-1 rounded border", filter === "resolved" ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={() => setFilter("resolved")}>Resolved</button>
         </div>
       </div>
-      {onCreateThread ? (
+      {(!readOnly && onCreateThread) ? (
         <div className="mt-3">
           <ReplyInput
             placeholder="Leave a comment..."
@@ -71,16 +71,18 @@ export default function CommentsSidebar(props: { docId: string; onJumpToBlock?: 
                 thread={thread}
                 first={first}
                 replies={replies}
-                canEdit={(id: string) => me?.userId && id === me.userId}
+                canEdit={(id: string) => !readOnly && me?.userId && id === me.userId}
                 onJumpToBlock={onJumpToBlock}
-                canResolve={me?.userId && me.userId === thread.creatorId}
-                onResolve={(resolved: boolean) => resolveThread({ threadId: thread.id, resolved }).catch(() => {})}
-                onDeleteComment={(commentId: string) => deleteComment({ commentId: commentId as any }).catch(() => {})}
+                canResolve={!readOnly && me?.userId && me.userId === thread.creatorId}
+                onResolve={(resolved: boolean) => { if (readOnly) return; resolveThread({ threadId: thread.id, resolved }).catch(() => {}); }}
+                onDeleteComment={(commentId: string) => { if (readOnly) return; deleteComment({ commentId: commentId as any }).catch(() => {}); }}
                 onReply={async (content: string) => {
+                  if (readOnly) return;
                   if (!first?._id) return;
                   await replyToComment({ parentCommentId: first._id, content }).catch(() => {});
                 }}
                 onEdit={async (commentId: string, content: string) => {
+                  if (readOnly) return;
                   await updateComment({ commentId: commentId as any, content }).catch(() => {});
                 }}
                 resolveUsername={(id: string) => usersMap[id]?.username ?? id}

@@ -93,6 +93,25 @@ export const remove = mutation({
     },
 });
 
+export const publish = mutation({
+    args: { documentId: v.id("documents") },
+    handler: async (ctx, { documentId }) => {
+        const doc = await ctx.db.get(documentId);
+        if (!doc) throw new Error("Document not found");
+        const shareId = (doc as any).shareId ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        await ctx.db.patch(documentId, { shareId, publishedAt: Date.now() });
+        return { shareId };
+    },
+});
+
+export const getByShareId = query({
+    args: { shareId: v.string() },
+    handler: async (ctx, { shareId }) => {
+        const [d] = await ctx.db.query("documents").withIndex("by_shareId", q => q.eq("shareId", shareId)).collect();
+        return d ?? null;
+    },
+});
+
 
 // Weekly updates API
 export const listWeeklyUpdates = query({

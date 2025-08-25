@@ -18,9 +18,10 @@ interface BlockNoteEditorProps {
 	docId: string;
 	onEditorReady?: (editor: CustomBlockNoteEditor) => void;
 	showRemoteCursors?: boolean;
+	editable?: boolean;
 }
 
-export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCursors = true }: BlockNoteEditorProps): ReactElement {
+export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCursors = true, editable = true }: BlockNoteEditorProps): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
 	const me = useQuery(api.comments.me, {});
 	const userId = (me as any)?.userId ?? null;
@@ -239,7 +240,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			{(sync as any)?.isLoading ? (
 				<p style={{ padding: 16 }}>Loading…</p>
 			) : editorInst ? (
-				<BlockNoteView editor={editorInst} theme="light" slashMenu={false}>
+				<BlockNoteView editor={editorInst} theme="light" slashMenu={false} editable={editable}>
 					<SuggestionMenuController
 						triggerCharacter="/"
 						getItems={async (query) =>

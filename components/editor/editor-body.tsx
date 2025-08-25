@@ -8,7 +8,7 @@ import { PageSidebar, IconPicker } from "@/components/sidebar";
 import { TopBar, SidebarOpenButton } from "@/components/layout";
 import { PageOptionsModal } from "@/components/modals/page-options-modal";
 
-export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null }): ReactElement {
+export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null; readOnly?: boolean }): ReactElement {
 	const [documentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);
 	const [pageDocId, setPageDocId] = useState<string | null>(null);
 	
@@ -60,11 +60,13 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 			<TopBar
 				documentTitle={documentTitle}
 				docId={pageDocId}
+				documentId={documentId}
+				readOnly={!!props.readOnly}
 				onToggleComments={() => setCommentsOpen((v) => !v)}
 				commentsOpen={commentsOpen}
 				optionsOpen={optionsOpen}
 				onToggleOptions={() => setOptionsOpen((v) => !v)}
-				editor={editorInstance}
+				editor={props.readOnly ? null : editorInstance}
 			/>
 
 			<div className="flex h-[calc(100vh-theme(spacing.16))] relative overflow-hidden">
@@ -88,7 +90,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 									}} />
 									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
 								</div>
-								<BlockNoteEditor docId={pageDocId} showRemoteCursors={showRemoteCursors} onEditorReady={(e: any) => { 
+								<BlockNoteEditor docId={pageDocId} showRemoteCursors={showRemoteCursors && !props.readOnly} editable={!props.readOnly} onEditorReady={(e: any) => { 
 									editorRef.current = e; 
 									setEditorInstance(e);
 								}} />
@@ -99,6 +101,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 				{commentsOpen ? (
 					<CommentsSidebar 
 						docId={pageDocId ?? ""}
+						readOnly={!!props.readOnly}
 						onJumpToBlock={(blockId: string) => {
 							const viewEl = document.querySelector(".bn-editor, [data-editor-root]") as HTMLElement | null;
 							// Special handling for page-level threads
@@ -161,9 +164,9 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	);
 }
 
-export default function Editor(props: { documentId?: string | null }): ReactElement {
+export default function Editor(props: { documentId?: string | null; readOnly?: boolean }): ReactElement {
 	return (
-		<EditorBody initialDocumentId={props.documentId ?? null} />
+		<EditorBody initialDocumentId={props.documentId ?? null} readOnly={props.readOnly} />
 	);
 }
 

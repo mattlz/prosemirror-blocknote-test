@@ -9,7 +9,9 @@ export default defineSchema({
 		createdAt: v.number(),
 		ownerId: v.optional(v.string()),
 		archivedAt: v.optional(v.number()),
-	}).index("by_owner", ["ownerId"]).index("by_created", ["createdAt"]),
+		shareId: v.optional(v.string()),
+		publishedAt: v.optional(v.number()),
+	}).index("by_owner", ["ownerId"]).index("by_created", ["createdAt"]).index("by_shareId", ["shareId"]),
 
 	pages: defineTable({
 		documentId: v.id("documents"),
