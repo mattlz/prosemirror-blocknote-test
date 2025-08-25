@@ -4,7 +4,7 @@ import {
   getDefaultReactSlashMenuItems,
 } from "@blocknote/react";
 import { insertOrUpdateBlock, BlockNoteEditor } from "@blocknote/core";
-import { Info } from "lucide-react";
+import { Info, Table } from "lucide-react";
 import { customSchema } from "./custom-schema";
 import type { ReactElement } from "react";
 
@@ -32,5 +32,21 @@ export const getCustomSlashMenuItems = (
     group: "Custom Blocks",
     icon: <Info size={18} className="text-blue-600" />,
     subtext: "Insert an alert message block",
+  },
+
+  // Datatable block
+  {
+    title: "Datatable",
+    onItemClick: () => {
+      insertOrUpdateBlock(editor, {
+        type: "datatable",
+        props: { table: "documents" },
+        content: [],
+      });
+    },
+    aliases: ["datatable", "table", "documents"],
+    group: "Custom Blocks",
+    icon: <Table size={18} className="text-green-600" />,
+    subtext: "Insert a dynamic documents table",
   },
 ];

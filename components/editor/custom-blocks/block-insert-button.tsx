@@ -3,7 +3,8 @@ import { useState, useRef, useEffect, type ReactElement } from "react";
 import { 
   Info,
   Plus,
-  ChevronDown 
+  ChevronDown,
+  Table,
 } from "lucide-react";
 import { insertOrUpdateBlock, BlockNoteEditor } from "@blocknote/core";
 import { customSchema, type CustomBlockNoteEditor } from "./custom-schema";
@@ -15,7 +16,7 @@ interface BlockInsertButtonProps {
 const blockTypes = [
   {
     id: "alert",
-    label: "Alert",
+    label: "Alert Banner",
     icon: <Info size={16} className="text-blue-600" />,
     action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
       insertOrUpdateBlock(editor, {
@@ -26,6 +27,18 @@ const blockTypes = [
           text: "Alert",
           styles: {},
         }],
+      });
+    },
+  },
+  {
+    id: "datatable",
+    label: "Datatable",
+    icon: <Table size={16} className="text-green-600" />,
+    action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
+      insertOrUpdateBlock(editor, {
+        type: "datatable",
+        props: { table: "documents" },
+        content: [],
       });
     },
   },

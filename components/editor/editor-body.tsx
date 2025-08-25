@@ -74,11 +74,11 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 				{showOpenButton && (
 					<SidebarOpenButton onOpen={() => setSidebarOpen(true)} />
 				)}
-				<div className="flex-1">
+				<div className="flex-1 min-h-0">
 					{!pageDocId ? (
-						<div className="p-6 text-neutral-600">{documentId ? "Select or create a page" : "No document selected"}</div>
+						<div className="h-full overflow-auto p-6 text-neutral-600">{documentId ? "Select or create a page" : "No document selected"}</div>
 					) : (
-						<div className="p-6">
+						<div className="h-full overflow-auto p-6">
 							<div className="mx-auto w-full max-w-[1000px]">
 								<div className="mt-4 mb-4 flex items-center gap-3">
 									<IconPicker value={(pages as any[]).find((p) => p.docId === pageDocId)?.icon ?? null} onChange={(val) => {

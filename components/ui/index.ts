@@ -1,1 +1,4 @@
-export * from "./button";\nexport * from "./input";\nexport * from "./card";\n
+export * from "./button";
+export * from "./input";
+export * from "./card";
+
