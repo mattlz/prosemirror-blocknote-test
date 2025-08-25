@@ -5,6 +5,6 @@ import { use } from "react";
 
 export default function DocEditorPage({ params }: { params: Promise<{ id: string }> }): ReactElement {
 	const { id } = use(params);
-	return <EditorShell documentId={id} /> as any;
+	return <EditorShell documentId={id} />;
 }
 

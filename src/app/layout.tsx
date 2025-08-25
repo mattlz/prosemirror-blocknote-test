@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Providers } from "@/lib/providers";
+import { Providers } from "@/providers/convex-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
