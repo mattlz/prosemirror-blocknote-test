@@ -30,11 +30,11 @@ function MetadataBlockComponent(renderProps: any): ReactElement {
   };
 
   return (
-    <div className="metadata-block" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, margin: "8px 0", background: "#fff" }}>
+    <div className="metadata-block" style={{ border: "1px solid var(--meta-border, #e5e7eb)", borderRadius: 8, padding: 12, margin: "8px 0", background: "var(--meta-bg, #fff)" }}>
       <div className="flex items-center justify-between gap-3" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <div style={{ fontWeight: 600 }}>Document Metadata</div>
         <div contentEditable={false}>
-          <select value={selectedId} onChange={handleChange} style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: "4px 8px", background: "white" }}>
+          <select value={selectedId} onChange={handleChange} style={{ border: "1px solid var(--meta-border, #e5e7eb)", borderRadius: 6, padding: "4px 8px", background: "var(--meta-select-bg, white)", color: "var(--meta-select-fg, inherit)" }}>
             <option value="">Select document…</option>
             {(documents ?? []).map((d: any) => (
               <option key={String(d._id)} value={String(d._id)}>{d.title}</option>
@@ -44,18 +44,18 @@ function MetadataBlockComponent(renderProps: any): ReactElement {
       </div>
       {selected ? (
         <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", rowGap: 6, columnGap: 12 }}>
-          <div style={{ color: "#6b7280" }}>Title</div>
+          <div style={{ color: "var(--meta-muted, #6b7280)" }}>Title</div>
           <div>{selected.title}</div>
 
-          <div style={{ color: "#6b7280" }}>Created At</div>
+          <div style={{ color: "var(--meta-muted, #6b7280)" }}>Created At</div>
           <div>{new Date(selected.createdAt).toLocaleString()}</div>
 
-          {selected.ownerId ? <><div style={{ color: "#6b7280" }}>Owner</div><div>{selected.ownerId}</div></> : null}
+          {selected.ownerId ? <><div style={{ color: "var(--meta-muted, #6b7280)" }}>Owner</div><div>{selected.ownerId}</div></> : null}
 
-          {selected.archivedAt ? <><div style={{ color: "#6b7280" }}>Archived</div><div>{new Date(selected.archivedAt).toLocaleString()}</div></> : null}
+          {selected.archivedAt ? <><div style={{ color: "var(--meta-muted, #6b7280)" }}>Archived</div><div>{new Date(selected.archivedAt).toLocaleString()}</div></> : null}
         </div>
       ) : (
-        <div style={{ color: "#6b7280" }}>No document selected.</div>
+        <div style={{ color: "var(--meta-muted, #6b7280)" }}>No document selected.</div>
       )}
     </div>
   );

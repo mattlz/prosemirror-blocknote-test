@@ -3,8 +3,8 @@ import { useMemo, useState, type ReactElement } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
-export default function CommentsSidebar(props: { docId: string; readOnly?: boolean; onJumpToBlock?: (blockId: string) => void; onCreateThread?: (content: string) => void | Promise<void> }): ReactElement {
-  const { docId, readOnly = false, onJumpToBlock, onCreateThread } = props;
+export default function CommentsSidebar(props: { docId: string; readOnly?: boolean; onJumpToBlock?: (blockId: string) => void; onCreateThread?: (content: string) => void | Promise<void>; theme?: "light" | "dark" }): ReactElement {
+  const { docId, readOnly = false, onJumpToBlock, onCreateThread, theme = "light" } = props;
   const [filter, setFilter] = useState<"all" | "open" | "resolved">("all");
   const includeResolved = filter !== "open";
   const threads = (useQuery(api.comments.listByDoc, { docId, includeResolved }) ?? []) as Array<{ thread: any; comments: any[] }>;
@@ -36,14 +36,25 @@ export default function CommentsSidebar(props: { docId: string; readOnly?: boole
     return m;
   }, [users]);
 
+  const isDark = theme === "dark";
+  const containerClass = ["w-80 shrink-0 p-4 overflow-y-auto border-l", isDark ? "bg-neutral-900 text-neutral-100 border-neutral-800" : "bg-white text-neutral-900"].join(" ");
+  const tabBtn = (active: boolean) => ["px-2 py-1 rounded border text-xs", isDark ? "border-neutral-700" : "border-neutral-300", active ? (isDark ? "bg-neutral-800" : "bg-neutral-100") : (isDark ? "bg-neutral-900" : "bg-white")].join(" ");
+  const cardClass = ["rounded-lg border", isDark ? "border-neutral-700 bg-neutral-900" : "border-gray-200 bg-white"].join(" ");
+  const cardHover = isDark ? "hover:bg-neutral-800" : "hover:bg-gray-50";
+  const mutedText = isDark ? "text-neutral-400" : "text-gray-500";
+  const strongText = isDark ? "text-neutral-100" : "text-gray-700";
+  const avatarBg = isDark ? "bg-neutral-800" : "bg-gray-200";
+  const inputClass = ["w-full rounded border pl-4 pr-16 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500", isDark ? "border-neutral-700 bg-neutral-900 text-neutral-100 placeholder-neutral-500" : "border-gray-300"].join(" ");
+  const btnGhost = isDark ? "hover:bg-neutral-800" : "hover:bg-gray-50";
+
   return (
-    <aside className="w-80 shrink-0 border-l bg-white p-4 overflow-y-auto">
+    <aside className={containerClass}>
       <div className="flex items-center justify-between">
         <div className="text-base font-semibold">Comments <span className="text-neutral-400">{filtered.length}</span></div>
         <div className="flex gap-1 text-xs">
-          <button className={["px-2 py-1 rounded border", filter === "all" ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={() => setFilter("all")}>All</button>
-          <button className={["px-2 py-1 rounded border", filter === "open" ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={() => setFilter("open")}>Open</button>
-          <button className={["px-2 py-1 rounded border", filter === "resolved" ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={() => setFilter("resolved")}>Resolved</button>
+          <button className={tabBtn(filter === "all")} onClick={() => setFilter("all")}>All</button>
+          <button className={tabBtn(filter === "open")} onClick={() => setFilter("open")}>Open</button>
+          <button className={tabBtn(filter === "resolved")} onClick={() => setFilter("resolved")}>Resolved</button>
         </div>
       </div>
       {(!readOnly && onCreateThread) ? (
@@ -53,6 +64,7 @@ export default function CommentsSidebar(props: { docId: string; readOnly?: boole
             value={newContent}
             onChange={setNewContent}
             onSend={async () => { if (!newContent.trim()) return; await onCreateThread?.(newContent.trim()); setNewContent(""); }}
+            theme={theme}
           />
         </div>
       ) : null}
@@ -86,6 +98,7 @@ export default function CommentsSidebar(props: { docId: string; readOnly?: boole
                   await updateComment({ commentId: commentId as any, content }).catch(() => {});
                 }}
                 resolveUsername={(id: string) => usersMap[id]?.username ?? id}
+                theme={theme}
               />
             );
           })
@@ -107,6 +120,7 @@ function ThreadCard({
   onReply,
   onEdit,
   resolveUsername,
+  theme = "light",
 }: {
   thread: any;
   first: any;
@@ -119,6 +133,7 @@ function ThreadCard({
   onReply: (content: string) => Promise<void>;
   onEdit: (commentId: string, content: string) => Promise<void>;
   resolveUsername: (id: string) => string;
+  theme?: "light" | "dark";
 }): ReactElement {
   const [expanded, setExpanded] = useState<boolean>(false);
   const [showReply, setShowReply] = useState<boolean>(false);
@@ -138,15 +153,21 @@ function ThreadCard({
       setShowReply(true);
     }
   };
-  
+  const isDark = theme === "dark";
+  const cardClass = ["rounded-lg border", isDark ? "border-neutral-700 bg-neutral-900" : "border-gray-200 bg-white", resolvedClass].join(" ");
+  const cardHover = isDark ? "hover:bg-neutral-800" : "hover:bg-gray-50";
+  const mutedText = isDark ? "text-neutral-400" : "text-gray-500";
+  const strongText = isDark ? "text-neutral-100" : "text-gray-700";
+  const avatarBg = isDark ? "bg-neutral-800" : "bg-gray-200";
+
   return (
-    <div className={["rounded-lg border border-gray-200 bg-white", resolvedClass].join(" ")}>
+    <div className={cardClass}>
       <div 
-        className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+        className={["p-3 cursor-pointer transition-colors", cardHover].join(" ")}
         onClick={handleCardClick}
       >
         <div className="flex gap-3">
-          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium flex-shrink-0">
+          <div className={["w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0", avatarBg].join(" ") }>
             {avatarInitial}
           </div>
           <div className="flex-1 min-w-0">
@@ -154,9 +175,9 @@ function ThreadCard({
               <div className="flex-1">
                 <div className="flex flex-col items-left mb-3">
                   <span className="font-semibold text-sm">{authorName}</span>
-                  <span className="text-xs text-gray-500">{timeText}</span>
+                  <span className={["text-xs", mutedText].join(" ")}>{timeText}</span>
                 </div>
-                <div className="text-sm text-gray-700 mt-1 break-words">
+                <div className={["text-sm mt-1 break-words", strongText].join(" ") }>
                   {first?.content || "(No content)"}
                 </div>
                 {replies.length > 0 && !expanded ? (
@@ -173,7 +194,7 @@ function ThreadCard({
               {canEdit(first?.authorId) ? (
                   <div className="relative">
                     <button
-                      className="p-0 rounded hover:bg-gray-200 text-gray-600 mt-1"
+                      className={["p-0 rounded", isDark ? "hover:bg-neutral-800 text-neutral-300" : "hover:bg-gray-200 text-gray-600"].join(" ")}
                       onClick={() => setMenuOpen(!menuOpen)}
                     >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -181,9 +202,9 @@ function ThreadCard({
                       </svg>
                     </button>
                     {menuOpen ? (
-                      <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                      <div className={["absolute right-0 mt-2 w-40 rounded-md shadow-lg border z-10", isDark ? "bg-neutral-900 border-neutral-700" : "bg-white border-gray-200"].join(" ")}>
                         <button
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                          className={["w-full text-left px-3 py-2 text-sm flex items-center gap-2", isDark ? "hover:bg-neutral-800" : "hover:bg-gray-50"].join(" ")}
                           onClick={() => {
                             setEditingId(first._id);
                             setEditingText(first.content ?? "");
@@ -197,7 +218,7 @@ function ThreadCard({
                           Edit
                         </button>
                         <button
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                          className={["w-full text-left px-3 py-2 text-sm flex items-center gap-2 text-red-600", isDark ? "hover:bg-red-900/20" : "hover:bg-gray-50"].join(" ")}
                           onClick={() => {
                             onDeleteComment(first._id);
                             setMenuOpen(false);
@@ -214,7 +235,7 @@ function ThreadCard({
                 ) : null}
                 {canResolve ? (
                   <button
-                    className={["p-0 rounded hover:bg-gray-200", thread.resolved ? "text-green-600" : "text-gray-400"].join(" ")}
+                    className={["p-0 rounded", isDark ? "hover:bg-neutral-800 text-green-500" : "hover:bg-gray-200 text-gray-400"].join(" ")}
                     onClick={() => onResolve(!thread.resolved)}
                     title={thread.resolved ? "Unresolve" : "Resolve"}
                   >
@@ -230,11 +251,11 @@ function ThreadCard({
       </div>
       
       {expanded ? (
-        <div className="border-t border-gray-100">
+        <div className={isDark ? "border-t border-neutral-800" : "border-t border-gray-100"}>
           {editingId === first._id ? (
             <div className="p-3">
               <textarea
-                className="w-full rounded border border-gray-300 p-2 text-sm"
+                className={["w-full rounded border p-2 text-sm", isDark ? "border-neutral-700 bg-neutral-900 text-neutral-100" : "border-gray-300"].join(" ")}
                 rows={3}
                 value={editingText}
                 onChange={(e) => setEditingText(e.target.value)}
@@ -250,7 +271,7 @@ function ThreadCard({
                   Save
                 </button>
                 <button
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                  className={["px-3 py-1 text-sm border rounded", isDark ? "border-neutral-700 hover:bg-neutral-800" : "border-gray-300 hover:bg-gray-50"].join(" ")}
                   onClick={() => {
                     setEditingId(null);
                     setEditingText("");
@@ -263,7 +284,7 @@ function ThreadCard({
           ) : null}
           
           {replies.length > 0 ? (
-            <div className="p-3 space-y-3 border-t border-gray-100">
+            <div className={["p-3 space-y-3 border-t", isDark ? "border-neutral-800" : "border-gray-100"].join(" ")}>
               {replies.map((c: any) => {
                 const replyAuthor = resolveUsername(c.authorId) || "User";
                 const replyInitial = (replyAuthor?.[0] ?? "U").toUpperCase();
@@ -271,18 +292,18 @@ function ThreadCard({
                 
                 return (
                   <div key={c._id} className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium flex-shrink-0">
+                    <div className={["w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0", avatarBg].join(" ") }>
                       {replyInitial}
                     </div>
                     <div className="flex-1">
                       <div className="flex flex-col items-left mb-3">
                         <span className="font-semibold text-sm">{replyAuthor}</span>
-                        <span className="text-xs text-gray-500">{replyTime}</span>
+                        <span className={["text-xs", mutedText].join(" ")}>{replyTime}</span>
                       </div>
                       {editingId === c._id ? (
                         <div className="mt-1">
                           <textarea
-                            className="w-full rounded border border-gray-300 p-2 text-sm"
+                            className={["w-full rounded border p-2 text-sm", isDark ? "border-neutral-700 bg-neutral-900 text-neutral-100" : "border-gray-300"].join(" ")}
                             rows={2}
                             value={editingText}
                             onChange={(e) => setEditingText(e.target.value)}
@@ -298,7 +319,7 @@ function ThreadCard({
                               Save
                             </button>
                             <button
-                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                              className={["px-2 py-1 text-xs border rounded", isDark ? "border-neutral-700 hover:bg-neutral-800" : "border-gray-300 hover:bg-gray-50"].join(" ")}
                               onClick={() => {
                                 setEditingId(null);
                                 setEditingText("");
@@ -309,14 +330,14 @@ function ThreadCard({
                           </div>
                         </div>
                       ) : (
-                        <div className="text-sm text-gray-700 mt-1 break-words">
+                        <div className={["text-sm mt-1 break-words", strongText].join(" ") }>
                           {c.content}
                         </div>
                       )}
                       {canEdit(c.authorId) && editingId !== c._id ? (
                         <div className="flex gap-2 mt-1">
                           <button
-                            className="text-xs text-gray-500 hover:text-gray-700"
+                            className={["text-xs", isDark ? "text-neutral-400 hover:text-neutral-200" : "text-gray-500 hover:text-gray-700"].join(" ")}
                             onClick={() => {
                               setEditingId(c._id);
                               setEditingText(c.content ?? "");
@@ -340,7 +361,7 @@ function ThreadCard({
           ) : null}
           
           {showReply ? (
-            <div className="p-3 border-t border-gray-100">
+            <div className={["p-3 border-t", isDark ? "border-neutral-800" : "border-gray-100"].join(" ")}>
               <ReplyInput
                 placeholder="Reply..."
                 value={reply}
@@ -350,6 +371,7 @@ function ThreadCard({
                   await onReply(reply.trim());
                   setReply("");
                 }}
+                theme={theme}
               />
             </div>
           ) : null}
@@ -362,11 +384,12 @@ function ThreadCard({
 // CommentView component removed - now inline in ThreadCard
 
 
-function ReplyInput({ placeholder = "Reply...", value, onChange, onSend }: { placeholder?: string; value: string; onChange: (v: string) => void; onSend: () => void | Promise<void> }): ReactElement {
+function ReplyInput({ placeholder = "Reply...", value, onChange, onSend, theme = "light" }: { placeholder?: string; value: string; onChange: (v: string) => void; onSend: () => void | Promise<void>; theme?: "light" | "dark" }): ReactElement {
+  const isDark = theme === "dark";
   return (
     <div className="relative">
       <input
-        className="w-full rounded-full border border-gray-300 pl-4 pr-16 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className={["w-full rounded-full border pl-4 pr-16 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500", isDark ? "border-neutral-700 bg-neutral-900 text-neutral-100 placeholder-neutral-500" : "border-gray-300"].join(" ")}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}

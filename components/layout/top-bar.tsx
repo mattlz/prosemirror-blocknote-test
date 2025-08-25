@@ -21,9 +21,10 @@ interface TopBarProps {
 	optionsOpen: boolean;
 	onToggleOptions: () => void;
 	editor?: any;
+	theme?: "light" | "dark";
 }
 
-export function TopBar({ documentTitle, docId, documentId, readOnly = false, onToggleComments, commentsOpen, optionsOpen, onToggleOptions, editor }: TopBarProps): ReactElement {
+export function TopBar({ documentTitle, docId, documentId, readOnly = false, onToggleComments, commentsOpen, optionsOpen, onToggleOptions, editor, theme = "light" }: TopBarProps): ReactElement {
 	const documents = useQuery(api.documents.list, {}) as any[] | undefined;
 	const currentDoc = useMemo(() => (documents ?? []).find(d => String(d._id) === String(documentId ?? "")) ?? null, [documents, documentId]);
 	const publishMutation = useMutation(api.documents.publish);
@@ -33,17 +34,34 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 	const effectiveShareId = localShareId ?? ((currentDoc as any)?.shareId ?? null);
 	const shareUrl = typeof window !== "undefined" && effectiveShareId ? `${window.location.origin}/s/${effectiveShareId}` : null;
 
+	const isDark = theme === "dark";
+	const containerClass = [
+		"sticky top-0 z-10 flex w-full items-center gap-3 px-4 py-2 border-b",
+		isDark ? "bg-neutral-900 text-neutral-100 border-neutral-800" : "bg-white text-neutral-900 border-neutral-200",
+	].join(" ");
+	const borderClass = isDark ? "border-neutral-800" : "border-neutral-200";
+	const commentsBtnClass = [
+		"inline-flex h-8 w-8 items-center justify-center rounded-md border",
+		borderClass,
+		commentsOpen ? (isDark ? "bg-neutral-800" : "bg-neutral-100") : (isDark ? "bg-neutral-900" : "bg-white"),
+	].join(" ");
+	const optionsBtnClass = [
+		"inline-flex h-8 w-8 items-center justify-center rounded-md border",
+		borderClass,
+		optionsOpen ? (isDark ? "bg-neutral-800" : "bg-neutral-100") : (isDark ? "bg-neutral-900" : "bg-white"),
+	].join(" ");
+
 	return (
-		<div className="sticky top-0 z-10 flex w-full items-center gap-3 border-b bg-white px-4 py-2">
+		<div className={containerClass}>
 			{!readOnly ? (
-				<button className="inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm" onClick={() => { window.location.href = "/docs"; }}><ArrowLeft className="h-4 w-4" /> All docs</button>
+				<button className={["inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm", borderClass].join(" ")} onClick={() => { window.location.href = "/docs"; }}><ArrowLeft className="h-4 w-4" /> All docs</button>
 			) : null}
 			<div className="text-lg font-semibold">{documentTitle}</div>
 			<div className="ml-auto flex items-center gap-2">
 				{!readOnly && editor ? <BlockInsertButton editor={editor} /> : null}
-				<button aria-label="Comments" className={["inline-flex h-8 w-8 items-center justify-center rounded-md border", commentsOpen ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={onToggleComments}><MessageCircle className="h-4 w-4" /></button>
+				<button aria-label="Comments" className={commentsBtnClass} onClick={onToggleComments}><MessageCircle className="h-4 w-4" /></button>
 				{!readOnly ? (
-					<button aria-label="Page options" className={["inline-flex h-8 w-8 items-center justify-center rounded-md border", optionsOpen ? "bg-neutral-100" : "bg-white"].join(" ")} onClick={onToggleOptions}><Settings className="h-4 w-4" /></button>
+					<button aria-label="Page options" className={optionsBtnClass} onClick={onToggleOptions}><Settings className="h-4 w-4" /></button>
 				) : null}
 				{!readOnly ? <PresenceAvatars docId={docId} /> : null}
 				<div>
@@ -64,13 +82,13 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 
 			{dialogOpen && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setDialogOpen(false)}>
-					<div className="w-[420px] rounded-lg border bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+					<div className={["w-[420px] rounded-lg border p-4 shadow-xl", isDark ? "bg-neutral-900 text-neutral-100 border-neutral-700" : "bg-white border-neutral-200"].join(" ")} onClick={(e) => e.stopPropagation()}>
 						{!effectiveShareId ? (
 							<div>
 								<h3 className="mb-2 text-lg font-semibold">Publish document?</h3>
-								<p className="mb-4 text-sm text-neutral-600">This will create a read-only share link anyone can view.</p>
+								<p className={["mb-4 text-sm", isDark ? "text-neutral-400" : "text-neutral-600"].join(" ")}>This will create a read-only share link anyone can view.</p>
 								<div className="flex justify-end gap-2">
-									<button className="inline-flex h-8 items-center rounded-md border px-2" onClick={() => setDialogOpen(false)}>Cancel</button>
+									<button className={["inline-flex h-8 items-center rounded-md border px-2", borderClass].join(" ")} onClick={() => setDialogOpen(false)}>Cancel</button>
 									<Button onClick={async () => {
 										if (!currentDoc?._id) return;
 										setPublishing(true);
@@ -86,7 +104,7 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 						) : (
 							<div>
 								<h3 className="mb-2 text-lg font-semibold">Share document</h3>
-								<div className="mb-3 break-all rounded-md border px-2 py-1 text-sm">{shareUrl}</div>
+								<div className={["mb-3 break-all rounded-md border px-2 py-1 text-sm", borderClass].join(" ")}>{shareUrl}</div>
 								<div className="flex justify-end gap-2">
 									<Button onClick={() => { if (shareUrl) navigator.clipboard.writeText(shareUrl); }}>Copy link</Button>
 									{!readOnly ? (

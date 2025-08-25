@@ -38,11 +38,11 @@ function DatatableBlockComponent(renderProps: any): ReactElement {
       data-table={table}
       style={{
         width: "100%",
-        border: "1px solid #e5e7eb",
+        border: "1px solid var(--dt-border, #e5e7eb)",
         borderRadius: 8,
         padding: 12,
         margin: "8px 0",
-        background: "#fff",
+        background: "var(--dt-bg, #fff)",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -54,7 +54,7 @@ function DatatableBlockComponent(renderProps: any): ReactElement {
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb" }}>
+            <tr style={{ textAlign: "left", borderBottom: "1px solid var(--dt-border, #e5e7eb)" }}>
               <th style={{ padding: "6px 8px", fontWeight: 500 }}>ID</th>
               <th style={{ padding: "6px 8px", fontWeight: 500 }}>Title</th>
               <th style={{ padding: "6px 8px", fontWeight: 500 }}>Created</th>
@@ -62,15 +62,15 @@ function DatatableBlockComponent(renderProps: any): ReactElement {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                <td style={{ padding: "6px 8px", whiteSpace: "nowrap", color: "#6b7280" }}>{r.id.slice(-8)}</td>
+              <tr key={r.id} style={{ borderBottom: "1px solid var(--dt-border, #f3f4f6)" }}>
+                <td style={{ padding: "6px 8px", whiteSpace: "nowrap", color: "var(--dt-muted, #6b7280)" }}>{r.id.slice(-8)}</td>
                 <td style={{ padding: "6px 8px" }}>{r.title}</td>
-                <td style={{ padding: "6px 8px", whiteSpace: "nowrap", color: "#6b7280" }}>{new Date(r.createdAt).toLocaleString()}</td>
+                <td style={{ padding: "6px 8px", whiteSpace: "nowrap", color: "var(--dt-muted, #6b7280)" }}>{new Date(r.createdAt).toLocaleString()}</td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={3} style={{ padding: "10px 8px", color: "#6b7280" }}>No rows.</td>
+                <td colSpan={3} style={{ padding: "10px 8px", color: "var(--dt-muted, #6b7280)" }}>No rows.</td>
               </tr>
             )}
           </tbody>

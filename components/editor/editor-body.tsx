@@ -17,6 +17,8 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	const [commentsOpen, setCommentsOpen] = useState<boolean>(false);
 	const [optionsOpen, setOptionsOpen] = useState<boolean>(false);
 	const [showRemoteCursors, setShowRemoteCursors] = useState<boolean>(true);
+	const [pageWidth, setPageWidth] = useState<"default" | "full">("default");
+	const [theme, setTheme] = useState<"light" | "dark">("light");
 
 	const [editorInstance, setEditorInstance] = useState<any>(null);
 	const editorRef = useRef<any>(null);
@@ -67,11 +69,14 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 				optionsOpen={optionsOpen}
 				onToggleOptions={() => setOptionsOpen((v) => !v)}
 				editor={props.readOnly ? null : editorInstance}
+				theme={theme}
 			/>
 
 			<div className="flex h-[calc(100vh-theme(spacing.16))] relative overflow-hidden">
-				<div className={`transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-					<PageSidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} onCollapse={() => setSidebarOpen(false)} />
+				<div className={`transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-64' : 'w-0'} overflow-hidden`}>
+					<div className={`h-full transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+						<PageSidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} onCollapse={() => setSidebarOpen(false)} theme={theme} />
+					</div>
 				</div>
 				{showOpenButton && (
 					<SidebarOpenButton onOpen={() => setSidebarOpen(true)} />
@@ -80,17 +85,17 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 					{!pageDocId ? (
 						<div className="h-full overflow-auto p-6 text-neutral-600">{documentId ? "Select or create a page" : "No document selected"}</div>
 					) : (
-						<div className="h-full overflow-auto p-6">
-							<div className="mx-auto w-full max-w-[1000px]">
+						<div className={`h-full overflow-auto p-6 ${theme === "dark" ? "bg-neutral-900 text-neutral-100" : "bg-white text-neutral-900"}`}>
+							<div className={pageWidth === "full" ? "w-full max-w-none" : "mx-auto w-full max-w-[1000px]"}>
 								<div className="mt-4 mb-4 flex items-center gap-3">
-									<IconPicker value={(pages as any[]).find((p) => p.docId === pageDocId)?.icon ?? null} onChange={(val) => {
+									<IconPicker theme={theme} value={(pages as any[]).find((p) => p.docId === pageDocId)?.icon ?? null} onChange={(val) => {
 										const page = (pages as any[]).find((p) => p.docId === pageDocId);
 										if (!page) return;
 										setIconMutation({ pageId: page._id, icon: val ?? undefined }).catch(() => {});
 									}} />
 									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
 								</div>
-								<BlockNoteEditor docId={pageDocId} showRemoteCursors={showRemoteCursors && !props.readOnly} editable={!props.readOnly} onEditorReady={(e: any) => { 
+								<BlockNoteEditor docId={pageDocId} showRemoteCursors={showRemoteCursors && !props.readOnly} editable={!props.readOnly} theme={theme} onEditorReady={(e: any) => { 
 									editorRef.current = e; 
 									setEditorInstance(e);
 								}} />
@@ -151,6 +156,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 
 							await createThreadMutation({ docId: pageDocId, blockId: selectedId, content }).catch(() => {});
 						}}
+						theme={theme}
 					/>
 				) : null}
 			</div>
@@ -159,6 +165,10 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 				onClose={() => setOptionsOpen(false)}
 				showRemoteCursors={showRemoteCursors}
 				onToggleRemoteCursors={setShowRemoteCursors}
+				pageWidth={pageWidth}
+				onChangePageWidth={setPageWidth}
+				theme={theme}
+				onChangeTheme={setTheme}
 			/>
 		</div>
 	);

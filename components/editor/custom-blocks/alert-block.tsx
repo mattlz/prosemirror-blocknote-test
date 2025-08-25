@@ -132,8 +132,8 @@ function AlertBlockComponent(renderProps: any): ReactElement {
               top: "100%",
               left: 0,
               marginTop: 6,
-              background: "white",
-              border: "1px solid #e5e7eb",
+              background: "var(--alert-menu-bg, white)",
+              border: "1px solid var(--alert-menu-border, #e5e7eb)",
               borderRadius: 8,
               boxShadow: "0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05)",
               zIndex: 20,
@@ -156,8 +156,8 @@ function AlertBlockComponent(renderProps: any): ReactElement {
                     gap: 8,
                     padding: "6px 8px",
                     borderRadius: 6,
-                    background: isActive ? "#f3f4f6" : "transparent",
-                    color: "#111827",
+                    background: isActive ? "var(--alert-menu-hover, #f3f4f6)" : "transparent",
+                    color: "var(--alert-menu-fg, #111827)",
                   }}
                 >
                   <TIcon size={16} color={t.color} />

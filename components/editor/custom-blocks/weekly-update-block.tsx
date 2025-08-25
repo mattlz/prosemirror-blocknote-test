@@ -31,7 +31,7 @@ function WeeklyUpdateBlockComponent(renderProps: any): ReactElement {
   };
 
   return (
-    <div className="weekly-update-block" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, margin: "8px 0", background: "#fff" }}>
+    <div className="weekly-update-block" style={{ border: "1px solid var(--wu-border, #e5e7eb)", borderRadius: 8, padding: 12, margin: "8px 0", background: "var(--wu-bg, #fff)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <div style={{ fontWeight: 600 }}>Weekly Updates</div>
         <div contentEditable={false}>
@@ -39,21 +39,21 @@ function WeeklyUpdateBlockComponent(renderProps: any): ReactElement {
         </div>
       </div>
       {rows.length === 0 ? (
-        <div style={{ color: "#6b7280" }}>No updates yet. Click Add Update to create the first one.</div>
+        <div style={{ color: "var(--wu-muted, #6b7280)" }}>No updates yet. Click Add Update to create the first one.</div>
       ) : (
         <div style={{ display: "grid", rowGap: 10 }}>
           {rows.map((r) => (
-            <div key={String(r._id)} style={{ border: "1px solid #f3f4f6", borderRadius: 6, padding: 10 }}>
+            <div key={String(r._id)} style={{ border: "1px solid var(--wu-item-border, #f3f4f6)", borderRadius: 6, padding: 10, background: "var(--wu-item-bg, transparent)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <div style={{ fontWeight: 600 }}>{new Date(r.createdAt).toLocaleString()}</div>
-                {r.authorId ? <div style={{ color: "#6b7280" }}>by {r.authorId}</div> : null}
+                {r.authorId ? <div style={{ color: "var(--wu-muted, #6b7280)" }}>by {r.authorId}</div> : null}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", rowGap: 6, columnGap: 12 }}>
-                <div style={{ color: "#6b7280", fontWeight: 500 }}>Accomplished this week</div>
+                <div style={{ color: "var(--wu-label, #6b7280)", fontWeight: 500 }}>Accomplished this week</div>
                 <div>{r.accomplished || "-"}</div>
-                <div style={{ color: "#6b7280", fontWeight: 500 }}>Next week's focus</div>
+                <div style={{ color: "var(--wu-label, #6b7280)", fontWeight: 500 }}>Next week's focus</div>
                 <div>{r.focus || "-"}</div>
-                <div style={{ color: "#6b7280", fontWeight: 500 }}>Blockers</div>
+                <div style={{ color: "var(--wu-label, #6b7280)", fontWeight: 500 }}>Blockers</div>
                 <div>{r.blockers || "-"}</div>
               </div>
             </div>

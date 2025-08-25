@@ -19,9 +19,10 @@ interface BlockNoteEditorProps {
 	onEditorReady?: (editor: CustomBlockNoteEditor) => void;
 	showRemoteCursors?: boolean;
 	editable?: boolean;
+	theme?: "light" | "dark";
 }
 
-export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCursors = true, editable = true }: BlockNoteEditorProps): ReactElement {
+export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCursors = true, editable = true, theme = "light" }: BlockNoteEditorProps): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
 	const me = useQuery(api.comments.me, {});
 	const userId = (me as any)?.userId ?? null;
@@ -236,11 +237,11 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	}, [threadsForDoc, threadStore, editorInst]);
 
 	return (
-		<div className="mt-4">
+		<div className="mt-4" data-editor-theme={theme}>
 			{(sync as any)?.isLoading ? (
 				<p style={{ padding: 16 }}>Loading…</p>
 			) : editorInst ? (
-				<BlockNoteView editor={editorInst} theme="light" slashMenu={false} editable={editable}>
+				<BlockNoteView editor={editorInst} theme={theme} slashMenu={false} editable={editable}>
 					<SuggestionMenuController
 						triggerCharacter="/"
 						getItems={async (query) =>
