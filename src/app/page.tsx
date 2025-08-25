@@ -11,7 +11,7 @@ export default function Home() {
     try {
       const last = localStorage.getItem("lastDocId");
       if (last) {
-        router.replace(`/docs/${last}`);
+        router.replace(`/editor/${last}`);
       } else {
         router.replace("/docs");
       }

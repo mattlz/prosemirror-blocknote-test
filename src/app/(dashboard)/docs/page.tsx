@@ -28,7 +28,7 @@ export default function DocsPage(): ReactElement {
 						const { documentId: id } = await create({ title });
 						
 						// Redirect to the new document editor
-						router.push(`/docs/${id}`);
+						router.push(`/editor/${id}`);
 					}}>New</button>
 					<button className="inline-flex h-9 items-center rounded-md border px-3" onClick={async () => { await signOut(); router.replace("/signin"); }}>Sign out</button>
 				</div>
@@ -45,7 +45,7 @@ export default function DocsPage(): ReactElement {
 						{filtered.map((d: any) => (
 							<tr key={d._id} className="border-t">
 								<td className="px-3 py-2">
-									<Link className="underline" href={`/docs/${d._id}`}>{d.title}</Link>
+									<Link className="underline" href={`/editor/${d._id}`}>{d.title}</Link>
 								</td>
 								<td className="px-3 py-2">
 									<div className="flex gap-2">

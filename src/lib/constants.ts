@@ -32,7 +32,9 @@ export const ROUTES = {
   },
   DOCS: {
     LIST: '/docs',
-    DETAIL: (id: string) => `/docs/${id}`,
+  },
+  EDITOR: {
+    DETAIL: (id: string) => `/editor/${id}`,
   },
   SHARED: {
     DETAIL: (shareId: string) => `/s/${shareId}`,
