@@ -4,7 +4,7 @@ import {
   getDefaultReactSlashMenuItems,
 } from "@blocknote/react";
 import { insertOrUpdateBlock, BlockNoteEditor } from "@blocknote/core";
-import { Info, Table } from "lucide-react";
+import { Info, Table, FileText } from "lucide-react";
 import { customSchema } from "./custom-schema";
 import type { ReactElement } from "react";
 
@@ -48,5 +48,21 @@ export const getCustomSlashMenuItems = (
     group: "Custom Blocks",
     icon: <Table size={18} className="text-green-600" />,
     subtext: "Insert a dynamic documents table",
+  },
+
+  // Metadata block
+  {
+    title: "Metadata",
+    onItemClick: () => {
+      insertOrUpdateBlock(editor, {
+        type: "metadata",
+        props: { documentId: "" },
+        content: [],
+      });
+    },
+    aliases: ["metadata", "meta", "document info"],
+    group: "Custom Blocks",
+    icon: <FileText size={18} className="text-purple-600" />,
+    subtext: "Insert a document metadata card",
   },
 ];

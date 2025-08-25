@@ -5,6 +5,7 @@ import {
   Plus,
   ChevronDown,
   Table,
+  FileText,
 } from "lucide-react";
 import { insertOrUpdateBlock, BlockNoteEditor } from "@blocknote/core";
 import { customSchema, type CustomBlockNoteEditor } from "./custom-schema";
@@ -38,6 +39,18 @@ const blockTypes = [
       insertOrUpdateBlock(editor, {
         type: "datatable",
         props: { table: "documents" },
+        content: [],
+      });
+    },
+  },
+  {
+    id: "metadata",
+    label: "Metadata",
+    icon: <FileText size={16} className="text-purple-600" />,
+    action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
+      insertOrUpdateBlock(editor, {
+        type: "metadata",
+        props: { documentId: "" },
         content: [],
       });
     },

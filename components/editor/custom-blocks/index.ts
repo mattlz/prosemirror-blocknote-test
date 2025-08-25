@@ -3,3 +3,4 @@ export { customSchema, type CustomBlockNoteEditor, type CustomBlock, type Custom
 export { getCustomSlashMenuItems } from "./slash-menu-items";
 export { BlockInsertButton } from "./block-insert-button";
 export { Datatable, type DatatableType } from "./datatable-block";
+export { Metadata, type MetadataType } from "./metadata-block";
