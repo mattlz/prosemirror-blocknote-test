@@ -6,14 +6,14 @@ import type { Page, PageOperations } from "@/types";
 
 export function usePages(documentId: Id<"documents"> | null) {
   const pages = useQuery(
-    api.pages.list,
+    api.documentPages.list,
     documentId ? { documentId } : "skip"
   ) as Page[] | undefined;
   
-  const renamePage = useMutation(api.pages.rename);
-  const reorderPage = useMutation(api.pages.reorder);
-  const removePage = useMutation(api.pages.remove);
-  const createSubpage = useMutation(api.pages.createSubpage);
+  const renamePage = useMutation(api.documentPages.rename);
+  const reorderPage = useMutation(api.documentPages.reorder);
+  const removePage = useMutation(api.documentPages.remove);
+  const createSubpage = useMutation(api.documentPages.createSubpage);
   
   const safePages = pages ?? [];
   

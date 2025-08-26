@@ -24,8 +24,8 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	const editorRef = useRef<any>(null);
 	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 	const [saveErrorAt, setSaveErrorAt] = useState<number | null>(null);
-	const createPage = useMutation(api.pages.create);
-	const setIconMutation = useMutation(api.pages.setIcon);
+	const createPage = useMutation(api.documentPages.create);
+	const setIconMutation = useMutation(api.documentPages.setIcon);
 	const createThreadMutation = useMutation(api.comments.createThread);
 
 	const onCreatePage = async (): Promise<void> => {
@@ -35,7 +35,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 		setPageDocId(docId);
 	};
 
-	const pages = useQuery(documentId ? api.pages.list : (api.documents.list as any), documentId ? ({ documentId: documentId as any } as any) : ({} as any)) ?? [];
+	const pages = useQuery(documentId ? api.documentPages.list : (api.documents.list as any), documentId ? ({ documentId: documentId as any } as any) : ({} as any)) ?? [];
 	const documents = useQuery(api.documents.list, {}) ?? [];
 	
 	const documentTitle = useMemo(() => (documents as any[]).find((d) => d._id === documentId)?.title ?? "All docs", [documents, documentId]);

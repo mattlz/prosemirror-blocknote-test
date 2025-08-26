@@ -22,9 +22,11 @@ export default defineSchema({
 		publishedAt: v.optional(v.number()),
 	}).index("by_owner", ["ownerId"]).index("by_created", ["createdAt"]).index("by_shareId", ["shareId"]),
 
-	pages: defineTable({
+
+
+	documentPages: defineTable({
 		documentId: v.id("documents"),
-		parentPageId: v.optional(v.id("pages")),
+		parentPageId: v.optional(v.id("documentPages")),
 		docId: v.string(),
 		title: v.string(),
 		icon: v.optional(v.string()),

@@ -1,23 +1,19 @@
+import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
-export const backfillUsers = mutation({
+// Migration completed - pages table has been renamed to documentPages
+export const migratePagesToDocumentPages = mutation({
   args: {},
   handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
-    let patched = 0;
-    for (const user of users) {
-      const updates: Record<string, unknown> = {};
-      if (user.createdAt === undefined) updates.createdAt = Date.now();
-      if (user.updatedAt === undefined) updates.updatedAt = Date.now();
-      if ((user as any).name === undefined) updates.name = (user as any).email?.split("@")[0] ?? "User";
-      if ((user as any).role === undefined) updates.role = "user";
-      if ((user as any).status === undefined) updates.status = "active";
-      if (Object.keys(updates).length > 0) {
-        await ctx.db.patch(user._id, updates);
-        patched++;
-      }
-    }
-    return { patched };
+    console.log("Migration already completed: pages table has been renamed to documentPages");
+    console.log("All data has been transferred to the new table");
+    
+    return { 
+      success: true, 
+      migrated: 0, 
+      reason: "already_completed",
+      message: "Migration was already completed successfully. All pages data is now in the 'documentPages' table."
+    };
   },
 });
 

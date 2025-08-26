@@ -5,12 +5,12 @@ import { QueryCtx, MutationCtx } from "./_generated/server";
 const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
 
 async function ensurePageRead(ctx: QueryCtx, id: string) {
-	const page = await ctx.db.query("pages").withIndex("by_docId", q => q.eq("docId", id)).first();
+	const page = await ctx.db.query("documentPages").withIndex("by_docId", q => q.eq("docId", id)).first();
 	if (!page) throw new Error("Unknown page");
 }
 
 async function ensurePageWrite(ctx: MutationCtx, id: string) {
-	const page = await ctx.db.query("pages").withIndex("by_docId", q => q.eq("docId", id)).first();
+	const page = await ctx.db.query("documentPages").withIndex("by_docId", q => q.eq("docId", id)).first();
 	if (!page) throw new Error("Unknown page");
 }
 
@@ -48,7 +48,7 @@ export const {
 					heading: firstHeading
 				});
 				
-				const page = await ctx.db.query("pages").withIndex("by_docId", q => q.eq("docId", id)).first();
+				const page = await ctx.db.query("documentPages").withIndex("by_docId", q => q.eq("docId", id)).first();
 				if (page && page.title !== firstHeading) {
 					console.log("🔄 UPDATING PAGE TITLE:", {
 						docId: id,

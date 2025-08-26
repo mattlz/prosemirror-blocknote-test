@@ -1,6 +1,6 @@
 export * from "./auth";
 export * from "./documents";
-export * from "./pages";
+export * from "./document-pages";
 export * from "./comments";
 export * from "./editor";
 export * from "./api";

@@ -37,7 +37,7 @@ export const create = mutation({
         });
 
         // Create a default page for this document
-        const pageId = await ctx.db.insert("pages", {
+        const pageId = await ctx.db.insert("documentPages", {
             title,
             documentId: id,
             order: 0,

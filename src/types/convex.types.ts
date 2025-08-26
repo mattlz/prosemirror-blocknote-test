@@ -23,10 +23,10 @@ export interface DocumentData extends Doc<"documents"> {
 }
 
 // Page types
-export interface PageData extends Doc<"pages"> {
-  _id: Id<"pages">;
+export interface PageData extends Doc<"documentPages"> {
+  _id: Id<"documentPages">;
   documentId: Id<"documents">;
-  parentPageId?: Id<"pages">;
+  parentPageId?: Id<"documentPages">;
   docId: string;
   title: string;
   icon?: string;
