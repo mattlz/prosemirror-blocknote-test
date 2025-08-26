@@ -3,7 +3,7 @@
  * Provides comprehensive typing for BlockNote editor, sync, and collaboration features
  */
 
-import type { BlockNoteEditor } from '@blocknote/core';
+// Import removed as BlockNoteEditor is not directly used in this file
 import type { Extension } from '@tiptap/core';
 import type { Transaction, EditorState } from 'prosemirror-state';
 import type { Node as ProseMirrorNode, Schema } from 'prosemirror-model';
@@ -30,7 +30,7 @@ export interface TiptapSyncState {
   /** Initial content snapshot from the server */
   initialContent: unknown;
   /** Function to create a new document */
-  create?: ((content: any) => Promise<void>) | undefined;
+  create?: ((content: unknown) => Promise<void>) | undefined;
 }
 
 /**

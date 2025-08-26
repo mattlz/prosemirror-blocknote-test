@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useCallback, type ReactElement } from "react";
+import React, { useMemo, useCallback, useEffect, memo, type ReactElement } from "react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import { SuggestionMenuController } from "@blocknote/react";
 import "@blocknote/shadcn/style.css";
@@ -8,23 +8,22 @@ import { BlockNoteEditor, nodeToBlock, filterSuggestionItems } from "@blocknote/
 import type { PMNode } from "@/types";
 import type {
 	ExtendedBlockNoteEditor,
-	ProseMirrorTransaction,
 	ResolvedUser,
 	PresenceUser,
-	ThreadData,
-	CommentThreadStore,
-	BlockNoteCreateOptions,
 	EditorPresenceResult,
 	EditorCommentsResult,
 	EditorSyncResult
 } from "@/types/blocknote.types";
 import { useEditorPresence, useEditorUser, useEditorComments, useEditorSync } from "@/hooks";
-import { useAuthToken } from "@convex-dev/auth/react";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { createRemoteCursorPlugin } from "@/components/editor";
 import { customSchema, type CustomBlockNoteEditor } from "./custom-blocks/custom-schema";
 import { getCustomSlashMenuItems } from "./custom-blocks/slash-menu-items";
+
+// Extracted manager components
+import { EditorSyncManager } from "./editor-sync-manager";
+import { EditorPresenceManager } from "./editor-presence-manager";
+import { EditorCommentManager } from "./editor-comment-manager";
+import { EditorDevLogger } from "./editor-dev-logger";
 
 interface BlockNoteEditorProps {
 	/** Unique identifier for the document to edit */
@@ -67,8 +66,20 @@ interface BlockNoteEditorProps {
  * />
  * ```
  */
-export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCursors = true, editable = true, theme = "light" }: BlockNoteEditorProps): ReactElement {
-	// Extract user data
+/**
+ * BlockNoteEditorComponent - A collaborative rich text editor with real-time sync
+ * 
+ * Now refactored to use extracted manager components following single responsibility
+ * principle and optimized for performance with React.memo and proper memoization.
+ */
+function BlockNoteEditorComponent({ 
+	docId, 
+	onEditorReady, 
+	showRemoteCursors = true, 
+	editable = true, 
+	theme = "light" 
+}: BlockNoteEditorProps): ReactElement {
+	// Extract user data - memoized to prevent unnecessary re-renders
 	const { userId, userEmail, userIdRef } = useEditorUser();
 	
 	// Extract presence data
@@ -80,18 +91,22 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	// Extract sync functionality
 	const { tiptapSync, latestVersion, manualSave } = useEditorSync(docId) as EditorSyncResult;
 
-	// Stable resolveUsers that reads from the ref (no editor re-instantiation on presence change)
+	// Memoized resolveUsers function to prevent editor re-creation
 	const resolveUsers = useCallback(async (userIds: string[]): Promise<ResolvedUser[]> => {
-		return userIds.map((id) => ({ id, username: presenceMapRef.current[id]?.name ?? "User", avatarUrl: "" }));
+		return userIds.map((id) => ({ 
+			id, 
+			username: presenceMapRef.current[id]?.name ?? "User", 
+			avatarUrl: "" 
+		}));
 	}, [presenceMapRef]);
 
 
+	// Memoized editor creation with performance optimizations
 	const editorFromSync = useMemo<ExtendedBlockNoteEditor | null>(() => {
 		if (tiptapSync.initialContent === null) return null;
-		// Headless editor for PM->BlockNote conversion only (no comments in headless)
-		// The TipTap snapshot may include a PM mark type named "comment" which
-		// doesn't exist in BlockNote's headless schema. Strip those marks first.
-		function stripUnsupportedMarks(node: unknown): PMNode {
+		
+		// Helper function to clean ProseMirror content of unsupported marks
+		const stripUnsupportedMarks = (node: unknown): PMNode => {
 			if (!node || typeof node !== "object") return node as PMNode;
 			const clone = { ...node as PMNode };
 			if (Array.isArray(clone.marks)) {
@@ -101,9 +116,17 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 				clone.content = clone.content.map(stripUnsupportedMarks) as PMNode[];
 			}
 			return clone;
-		}
+		};
+		
+		// Clean and convert initial content
 		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent);
-		const headless = BlockNoteEditor.create({ schema: customSchema, resolveUsers, _headless: true });
+		const headless = BlockNoteEditor.create({ 
+			schema: customSchema, 
+			resolveUsers, 
+			_headless: true 
+		});
+		
+		// Convert ProseMirror content to BlockNote blocks
 		const blocks: unknown[] = [];
 		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial);
 		if (pmNode.firstChild) {
@@ -112,6 +135,8 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 				return false;
 			});
 		}
+		
+		// Create main editor with collaborative features
 		return BlockNoteEditor.create({
 			schema: customSchema,
 			resolveUsers,
@@ -120,191 +145,108 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 				extensions: [tiptapSync.extension],
 			},
 			_extensions: {
-				remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => {
-					if (!showRemoteCursors) return [] as PresenceUser[];
-					const filtered = presenceRef.current.filter((p: PresenceUser) => p.userId !== userIdRef.current);
-					return filtered;
-				}) }),
+				remoteCursors: () => ({ 
+					plugin: createRemoteCursorPlugin(() => {
+						if (!showRemoteCursors) return [] as PresenceUser[];
+						return presenceRef.current.filter(
+							(p: PresenceUser) => p.userId !== userIdRef.current
+						);
+					})
+				}),
 			},
 			initialContent: blocks.length > 0 ? blocks : undefined,
 		}) as ExtendedBlockNoteEditor;
-	// Only re-create when initial snapshot or thread store changes
-	}, [tiptapSync.initialContent, resolveUsers, threadStore, showRemoteCursors]);
+	}, [tiptapSync.initialContent, resolveUsers, threadStore, showRemoteCursors, presenceRef, userIdRef]);
 
-	interface EditorSyncState {
-		editor: ExtendedBlockNoteEditor | null;
-		isLoading: boolean;
-		create?: ((content: any) => Promise<void>) | undefined;
-	}
-
-	const sync: EditorSyncState = useMemo(() => ({
+	// Memoized sync state to prevent unnecessary re-renders
+	const syncState = useMemo(() => ({
 		editor: editorFromSync,
 		isLoading: tiptapSync.isLoading,
 		create: tiptapSync.create,
 	}), [editorFromSync, tiptapSync.isLoading, tiptapSync.create]);
 
-	const token = useAuthToken();
-	const colorRef = useRef<string>(`hsl(${Math.floor(Math.random() * 360)} 70% 45%)`);
-	const nameRef = useRef<string>("User");
+	// Memoized editor ready callback
+	const handleEditorReady = useCallback((editor: ExtendedBlockNoteEditor) => {
+		onEditorReady?.(editor as CustomBlockNoteEditor);
+	}, [onEditorReady]);
+
+	// Current editor instance
+	const editorInst = syncState.editor;
 	
-	// Update nameRef when user email becomes available
+	// Trigger editor ready callback when editor becomes available
 	useEffect(() => {
-		if (userEmail && nameRef.current === "User") {
-			nameRef.current = userEmail;
+		if (editorInst) {
+			handleEditorReady(editorInst);
 		}
-	}, [userEmail]);
-	
-	const heartbeat = useMutation(api.presence.heartbeat);
-	useEffect(() => {
-		if (!token) return;
-		let active = true;
-		const color = colorRef.current;
-		const name = nameRef.current;
-		const interval = setInterval(() => {
-			if (!active) return;
-			const pos = sync.editor?.prosemirrorState?.selection?.head ?? 0;
-			heartbeat({ docId, cursor: String(pos), name, color }).catch(() => {});
-		}, 1000);
-		return () => { active = false; clearInterval(interval); };
-	}, [docId, heartbeat, token, sync.editor]);
+	}, [editorInst, handleEditorReady]);
 
-	const editorInst = sync.editor;
-	useEffect(() => {
-		if (onEditorReady && editorInst) onEditorReady(editorInst);
-	}, [editorInst, onEditorReady]);
-
-	// Attach a manualSave method onto the editor instance so external UI can trigger it
-	useEffect(() => {
-		if (!editorInst) return;
-		editorInst.manualSave = async (): Promise<void> => {
-			try {
-				await manualSave(editorInst as any);
-				if (typeof window !== "undefined") {
-					window.dispatchEvent(new CustomEvent("doc-saved", { detail: { docId, ts: Date.now(), source: "manual" } }));
-				}
-			} catch {
-				if (typeof window !== "undefined") {
-					window.dispatchEvent(new CustomEvent("doc-save-error", { detail: { docId, ts: Date.now(), source: "manual" } }));
-				}
-			}
-		};
-	}, [editorInst, manualSave, docId]);
-
-	// When the synced version changes (autosave or collaborative updates), broadcast a saved event
-	const lastVersionRef = useRef<number | null>(null);
-	useEffect(() => {
-		if (typeof latestVersion !== "number") return;
-		if (lastVersionRef.current === null) {
-			lastVersionRef.current = latestVersion;
-			return;
-		}
-		if (latestVersion !== lastVersionRef.current) {
-			lastVersionRef.current = latestVersion;
-			if (typeof window !== "undefined") {
-				window.dispatchEvent(new CustomEvent("doc-saved", { detail: { docId, version: latestVersion, ts: Date.now(), source: "auto" } }));
-			}
-		}
-	}, [latestVersion, docId]);
-
-	// Add logging for Tiptap sync state changes
-	useEffect(() => {
-		console.log("🔄 TIPTAP SYNC STATE CHANGED:", {
-			docId,
-			isLoading: tiptapSync.isLoading,
-			hasInitialContent: tiptapSync.initialContent !== null,
-			initialContentLength: tiptapSync.initialContent?.length || 0,
-			timestamp: new Date().toISOString()
-		});
-	}, [tiptapSync.isLoading, tiptapSync.initialContent, docId]);
-
-	// Add logging for editor changes
-	useEffect(() => {
-		if (!editorInst) return;
-		
-		const handleTransaction = (transaction: ProseMirrorTransaction) => {
-			if (transaction.docChanged) {
-				console.log("📝 EDITOR TRANSACTION:", {
-					docId,
-					stepCount: transaction.steps.length,
-					stepTypes: transaction.steps.map((s) => s.stepType || 'unknown'),
-					timestamp: new Date().toISOString(),
-					docSize: transaction.doc.content.size
-				});
-			}
-		};
-		
-		// Listen to ProseMirror transactions
-		const editor = editorInst?.prosemirrorEditor;
-		if (editor) {
-			editor.on('transaction', handleTransaction);
-			console.log("🎧 EDITOR TRANSACTION LISTENER ATTACHED:", { docId });
-		}
-		
-		return () => {
-			if (editor) {
-				editor.off('transaction', handleTransaction);
-				console.log("🎧 EDITOR TRANSACTION LISTENER REMOVED:", { docId });
-			}
-		};
-	}, [editorInst, docId]);
-
-	const lastMarkedRef = useRef<Set<string>>(new Set());
-	useEffect(() => {
-		if (!editorInst) return;
-		const current = new Set<string>(threadsForDoc.map((t: ThreadData) => t.thread.blockId));
-		for (const oldId of Array.from(lastMarkedRef.current)) {
-			if (!current.has(oldId)) {
-				const trySelectors = [
-					`[data-id="${oldId}"]`,
-					`[data-block-id="${oldId}"]`,
-					`[data-node-id="${oldId}"]`,
-				];
-				for (const sel of trySelectors) {
-					const el = document.querySelector(sel) as HTMLElement | null;
-					if (el) {
-						el.removeAttribute("data-has-comment");
-					}
-				}
-				lastMarkedRef.current.delete(oldId);
-			}
-		}
-		for (const id of Array.from(current)) {
-			const trySelectors = [
-				`[data-id="${id}"]`,
-				`[data-block-id="${id}"]`,
-				`[data-node-id="${id}"]`,
-			];
-			let el: HTMLElement | null = null;
-			for (const sel of trySelectors) {
-				el = document.querySelector(sel) as HTMLElement | null;
-				if (el) break;
-			}
-			if (el) {
-				el.setAttribute("data-has-comment", "1");
-				lastMarkedRef.current.add(id);
-			}
-		}
-		threadStore.setThreadsFromConvex(threadsForDoc as ThreadData[]);
-	}, [threadsForDoc, threadStore, editorInst]);
+	// Memoized slash menu items to prevent recreation
+	const slashMenuItems = useCallback(
+		async (query: string) => {
+			if (!editorInst) return [];
+			return filterSuggestionItems(
+				getCustomSlashMenuItems(editorInst as any), 
+				query
+			);
+		},
+		[editorInst]
+	);
 
 	return (
-		<div className="mt-4" data-editor-theme={theme}>
-			{sync.isLoading ? (
-				<p style={{ padding: 16 }}>Loading…</p>
-			) : editorInst ? (
-				<BlockNoteView editor={editorInst as any} theme={theme} slashMenu={false} editable={editable}>
-					<SuggestionMenuController
-						triggerCharacter="/"
-						getItems={async (query) =>
-							filterSuggestionItems(getCustomSlashMenuItems(editorInst as any), query)
-						}
-					/>
-				</BlockNoteView>
-			) : (
-				<div style={{ padding: 16 }}>Editor not ready</div>
-			)}
-		</div>
+		<>
+			{/* Manager Components - Handle side effects without rendering */}
+			<EditorSyncManager
+				editor={editorInst}
+				docId={docId}
+				latestVersion={latestVersion}
+				manualSave={manualSave}
+			/>
+			<EditorPresenceManager
+				docId={docId}
+				editor={editorInst}
+				userEmail={userEmail}
+			/>
+			<EditorCommentManager
+				threads={threadsForDoc}
+				threadStore={threadStore}
+				editor={editorInst}
+			/>
+			<EditorDevLogger
+				docId={docId}
+				editor={editorInst}
+				syncState={tiptapSync}
+			/>
+			
+			{/* Main Editor UI */}
+			<div className="mt-4" data-editor-theme={theme}>
+				{syncState.isLoading ? (
+					<div className="flex items-center justify-center p-8">
+						<div className="text-sm text-muted-foreground">Loading editor…</div>
+					</div>
+				) : editorInst ? (
+					<BlockNoteView 
+						editor={editorInst as any} 
+						theme={theme} 
+						slashMenu={false} 
+						editable={editable}
+					>
+						<SuggestionMenuController
+							triggerCharacter="/"
+							getItems={slashMenuItems}
+						/>
+					</BlockNoteView>
+				) : (
+					<div className="flex items-center justify-center p-8">
+						<div className="text-sm text-muted-foreground">Editor not ready</div>
+					</div>
+				)}
+			</div>
+		</>
 	);
 }
 
-export { BlockNoteEditorComponent as BlockNoteEditor };
+// Memoize the component to prevent unnecessary re-renders
+const MemoizedBlockNoteEditor = memo(BlockNoteEditorComponent);
+
+// Export both the memoized and non-memoized versions
+export { MemoizedBlockNoteEditor as BlockNoteEditor, BlockNoteEditorComponent };
