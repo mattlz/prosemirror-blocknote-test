@@ -1,4 +1,4 @@
-export interface Comment {
+export interface CommentLegacy {
 	_id: string;
 	docId: string;
 	blockId: string;
@@ -9,7 +9,7 @@ export interface Comment {
 	updatedAt: number;
 }
 
-export interface Thread {
+export interface ThreadLegacy {
 	_id?: string;
 	id?: string;
 	docId: string;

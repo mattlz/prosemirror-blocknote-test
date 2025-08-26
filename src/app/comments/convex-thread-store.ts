@@ -57,13 +57,18 @@ function bodyFromStored(content: string): CommentBody {
 }
 
 export class ConvexThreadStore extends ThreadStore {
+  // Implement missing method from ThreadStore
+  async addThreadToDocument(_options: { threadId: string; selection: { prosemirror: { head: number; anchor: number; }; yjs?: { head: any; anchor: any; } | undefined; }; }): Promise<void> {
+    // This is handled by setThreadsFromConvex and Convex mutations
+    return;
+  }
   private threads: Map<string, ThreadData> = new Map();
   private listeners: Set<(threads: Map<string, ThreadData>) => void> = new Set();
   private readonly docId: string;
   private readonly deps: ConvexThreadStoreDeps;
 
   constructor(docId: string, deps: ConvexThreadStoreDeps) {
-    super(new DefaultThreadStoreAuth(deps.userId, deps.role ?? "editor"));
+    super(new DefaultThreadStoreAuth(deps.userId, deps.role === "commenter" ? "comment" : "editor"));
     this.docId = docId;
     this.deps = deps;
   }
@@ -79,6 +84,7 @@ export class ConvexThreadStore extends ThreadStore {
         updatedAt: new Date(thread.createdAt),
         resolved: !!thread.resolved,
         metadata: { docId: thread.docId, blockId: thread.blockId },
+        comments: [],
       };
       const cs: CommentData[] = comments.map((c: any) => ({
         type: "comment",

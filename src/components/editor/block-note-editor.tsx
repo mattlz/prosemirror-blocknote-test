@@ -6,6 +6,18 @@ import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
 import { BlockNoteEditor, nodeToBlock, filterSuggestionItems } from "@blocknote/core";
 import type { PMNode } from "@/types";
+import type {
+	ExtendedBlockNoteEditor,
+	ProseMirrorTransaction,
+	ResolvedUser,
+	PresenceUser,
+	ThreadData,
+	CommentThreadStore,
+	BlockNoteCreateOptions,
+	EditorPresenceResult,
+	EditorCommentsResult,
+	EditorSyncResult
+} from "@/types/blocknote.types";
 import { useEditorPresence, useEditorUser, useEditorComments, useEditorSync } from "@/hooks";
 import { useAuthToken } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
@@ -60,27 +72,27 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	const { userId, userEmail, userIdRef } = useEditorUser();
 	
 	// Extract presence data
-	const { presence, presenceRef, presenceMapRef } = useEditorPresence(docId);
+	const { presence, presenceRef, presenceMapRef } = useEditorPresence(docId) as EditorPresenceResult;
 	
 	// Extract comments data
-	const { threadsForDoc, threadStore } = useEditorComments(docId, userId);
+	const { threadsForDoc, threadStore } = useEditorComments(docId, userId) as EditorCommentsResult;
 	
 	// Extract sync functionality
-	const { tiptapSync, latestVersion, manualSave } = useEditorSync(docId);
+	const { tiptapSync, latestVersion, manualSave } = useEditorSync(docId) as EditorSyncResult;
 
 	// Stable resolveUsers that reads from the ref (no editor re-instantiation on presence change)
-	const resolveUsers = useCallback(async (userIds: string[]): Promise<Array<{ id: string; username: string; avatarUrl: string }>> => {
+	const resolveUsers = useCallback(async (userIds: string[]): Promise<ResolvedUser[]> => {
 		return userIds.map((id) => ({ id, username: presenceMapRef.current[id]?.name ?? "User", avatarUrl: "" }));
-	}, []);
+	}, [presenceMapRef]);
 
 
-	const editorFromSync = useMemo(() => {
+	const editorFromSync = useMemo<ExtendedBlockNoteEditor | null>(() => {
 		if (tiptapSync.initialContent === null) return null;
 		// Headless editor for PM->BlockNote conversion only (no comments in headless)
 		// The TipTap snapshot may include a PM mark type named "comment" which
 		// doesn't exist in BlockNote's headless schema. Strip those marks first.
-		function stripUnsupportedMarks(node: unknown): unknown {
-			if (!node || typeof node !== "object") return node;
+		function stripUnsupportedMarks(node: unknown): PMNode {
+			if (!node || typeof node !== "object") return node as PMNode;
 			const clone = { ...node as PMNode };
 			if (Array.isArray(clone.marks)) {
 				clone.marks = clone.marks.filter(m => m?.type !== "comment");
@@ -90,12 +102,12 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			}
 			return clone;
 		}
-		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent as any);
+		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent);
 		const headless = BlockNoteEditor.create({ schema: customSchema, resolveUsers, _headless: true });
-		const blocks: any[] = [];
-		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial as any);
-		if ((pmNode as any).firstChild) {
-			(pmNode as any).firstChild.descendants((node: any) => {
+		const blocks: unknown[] = [];
+		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial);
+		if (pmNode.firstChild) {
+			pmNode.firstChild.descendants((node) => {
 				blocks.push(nodeToBlock(node, headless.pmSchema));
 				return false;
 			});
@@ -109,17 +121,23 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			},
 			_extensions: {
 				remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => {
-					if (!showRemoteCursors) return [] as any[];
-					const filtered = (presenceRef.current as any[]).filter(p => p.userId !== userIdRef.current);
+					if (!showRemoteCursors) return [] as PresenceUser[];
+					const filtered = presenceRef.current.filter((p: PresenceUser) => p.userId !== userIdRef.current);
 					return filtered;
 				}) }),
 			},
 			initialContent: blocks.length > 0 ? blocks : undefined,
-		});
+		}) as ExtendedBlockNoteEditor;
 	// Only re-create when initial snapshot or thread store changes
 	}, [tiptapSync.initialContent, resolveUsers, threadStore, showRemoteCursors]);
 
-	const sync = useMemo(() => ({
+	interface EditorSyncState {
+		editor: ExtendedBlockNoteEditor | null;
+		isLoading: boolean;
+		create?: ((content: any) => Promise<void>) | undefined;
+	}
+
+	const sync: EditorSyncState = useMemo(() => ({
 		editor: editorFromSync,
 		isLoading: tiptapSync.isLoading,
 		create: tiptapSync.create,
@@ -144,13 +162,13 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 		const name = nameRef.current;
 		const interval = setInterval(() => {
 			if (!active) return;
-			const pos = (sync as any)?.editor?.prosemirrorState?.selection?.head ?? 0;
+			const pos = sync.editor?.prosemirrorState?.selection?.head ?? 0;
 			heartbeat({ docId, cursor: String(pos), name, color }).catch(() => {});
 		}, 1000);
 		return () => { active = false; clearInterval(interval); };
-	}, [docId, heartbeat, token, (sync as any)?.editor]);
+	}, [docId, heartbeat, token, sync.editor]);
 
-	const editorInst = (sync as any)?.editor as CustomBlockNoteEditor | null;
+	const editorInst = sync.editor;
 	useEffect(() => {
 		if (onEditorReady && editorInst) onEditorReady(editorInst);
 	}, [editorInst, onEditorReady]);
@@ -158,9 +176,9 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	// Attach a manualSave method onto the editor instance so external UI can trigger it
 	useEffect(() => {
 		if (!editorInst) return;
-		(editorInst as any).manualSave = async (): Promise<void> => {
+		editorInst.manualSave = async (): Promise<void> => {
 			try {
-				await manualSave(editorInst);
+				await manualSave(editorInst as any);
 				if (typeof window !== "undefined") {
 					window.dispatchEvent(new CustomEvent("doc-saved", { detail: { docId, ts: Date.now(), source: "manual" } }));
 				}
@@ -203,12 +221,12 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	useEffect(() => {
 		if (!editorInst) return;
 		
-		const handleTransaction = (transaction: any) => {
+		const handleTransaction = (transaction: ProseMirrorTransaction) => {
 			if (transaction.docChanged) {
 				console.log("📝 EDITOR TRANSACTION:", {
 					docId,
 					stepCount: transaction.steps.length,
-					stepTypes: transaction.steps.map((s: any) => s.stepType || 'unknown'),
+					stepTypes: transaction.steps.map((s) => s.stepType || 'unknown'),
 					timestamp: new Date().toISOString(),
 					docSize: transaction.doc.content.size
 				});
@@ -216,7 +234,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 		};
 		
 		// Listen to ProseMirror transactions
-		const editor = (editorInst as any)?.prosemirrorEditor;
+		const editor = editorInst?.prosemirrorEditor;
 		if (editor) {
 			editor.on('transaction', handleTransaction);
 			console.log("🎧 EDITOR TRANSACTION LISTENER ATTACHED:", { docId });
@@ -233,7 +251,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	const lastMarkedRef = useRef<Set<string>>(new Set());
 	useEffect(() => {
 		if (!editorInst) return;
-		const current = new Set<string>((threadsForDoc as any[]).map((t: any) => t.thread.blockId));
+		const current = new Set<string>(threadsForDoc.map((t: ThreadData) => t.thread.blockId));
 		for (const oldId of Array.from(lastMarkedRef.current)) {
 			if (!current.has(oldId)) {
 				const trySelectors = [
@@ -266,19 +284,19 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 				lastMarkedRef.current.add(id);
 			}
 		}
-		(threadStore as any).setThreadsFromConvex(threadsForDoc as any);
+		threadStore.setThreadsFromConvex(threadsForDoc as ThreadData[]);
 	}, [threadsForDoc, threadStore, editorInst]);
 
 	return (
 		<div className="mt-4" data-editor-theme={theme}>
-			{(sync as any)?.isLoading ? (
+			{sync.isLoading ? (
 				<p style={{ padding: 16 }}>Loading…</p>
 			) : editorInst ? (
-				<BlockNoteView editor={editorInst} theme={theme} slashMenu={false} editable={editable}>
+				<BlockNoteView editor={editorInst as any} theme={theme} slashMenu={false} editable={editable}>
 					<SuggestionMenuController
 						triggerCharacter="/"
 						getItems={async (query) =>
-							filterSuggestionItems(getCustomSlashMenuItems(editorInst as CustomBlockNoteEditor), query)
+							filterSuggestionItems(getCustomSlashMenuItems(editorInst as any), query)
 						}
 					/>
 				</BlockNoteView>
