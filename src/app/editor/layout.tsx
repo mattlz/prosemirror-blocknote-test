@@ -1,3 +1,6 @@
+"use client";
+import { AuthGuard } from "@/components/auth/auth-guard";
+
 /**
  * EditorLayout - Layout specifically for the editor experience
  * 
@@ -11,8 +14,10 @@ export default function EditorLayout({
   children: React.ReactNode 
 }): React.ReactNode {
   return (
-    <div className="h-screen w-full">
-      {children}
-    </div>
+    <AuthGuard>
+      <div className="h-screen w-full">
+        {children}
+      </div>
+    </AuthGuard>
   );
 }

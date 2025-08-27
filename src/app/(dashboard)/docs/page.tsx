@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 
 export default function DocsPage(): ReactElement {
 	const { signOut } = useAuthActions();
+	const currentUser = useQuery(api.users.current);
 	const router = useRouter();
 	const docs = useQuery(api.documents.list, {}) ?? [];
 	const create = useMutation(api.documents.create);
@@ -21,6 +22,11 @@ export default function DocsPage(): ReactElement {
 		<div className="mx-auto max-w-5xl p-6">
 			<header className="flex items-center gap-3">
 				<h1 className="text-2xl font-semibold">Documents</h1>
+				{currentUser && (
+					<div className="text-sm text-gray-600">
+						Welcome, {currentUser.name || currentUser.email || 'User'}
+					</div>
+				)}
 				<div className="ml-auto flex items-center gap-2">
 					<input className="h-9 rounded-md border px-3" placeholder="Search…" value={filter} onChange={(e) => setFilter(e.target.value)} />
 					<button className="inline-flex h-9 items-center rounded-md border px-3" onClick={async () => {
