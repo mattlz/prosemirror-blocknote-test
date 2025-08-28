@@ -14,6 +14,8 @@ import { createRemoteCursorPlugin } from "@/components/editor";
 import { customSchema, type CustomBlockNoteEditor } from "./custom-blocks/custom-schema";
 import { getCustomSlashMenuItems } from "./custom-blocks/slash-menu-items";
 
+const INITIAL_DOCUMENT: { type: string; content: unknown[] } = { type: "doc", content: [] };
+
 interface BlockNoteEditorProps {
 	docId: string;
 	onEditorReady?: (editor: CustomBlockNoteEditor) => void;
@@ -63,14 +65,36 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	const deleteCommentMutation = useMutation(api.comments.deleteComment);
 	const resolveThreadMutation = useMutation(api.comments.resolveThread);
 
+	// Store mutations in refs to prevent threadStore recreation
+	const createThreadRef = useRef(createThreadMutation);
+	const addCommentRef = useRef(addCommentMutation);
+	const updateCommentRef = useRef(updateCommentMutation);
+	const deleteCommentRef = useRef(deleteCommentMutation);
+	const resolveThreadRef = useRef(resolveThreadMutation);
+
+	useEffect(() => { createThreadRef.current = createThreadMutation; }, [createThreadMutation]);
+	useEffect(() => { addCommentRef.current = addCommentMutation; }, [addCommentMutation]);
+	useEffect(() => { updateCommentRef.current = updateCommentMutation; }, [updateCommentMutation]);
+	useEffect(() => { deleteCommentRef.current = deleteCommentMutation; }, [deleteCommentMutation]);
+	useEffect(() => { resolveThreadRef.current = resolveThreadMutation; }, [resolveThreadMutation]);
+
 	const threadStore = useMemo(() => new ConvexThreadStore(docId, {
 		userId: userId || "current",
-		createThread: ({ docId: d, blockId, content }) => createThreadMutation({ docId: d, blockId: blockId ?? "", content }) as any,
-		createComment: ({ docId: d, blockId, threadId, content }) => addCommentMutation({ docId: d, blockId: blockId ?? "", threadId, content }) as any,
-		updateComment: ({ commentId, content }) => updateCommentMutation({ commentId: commentId as any, content }) as any,
-		deleteComment: ({ commentId }) => deleteCommentMutation({ commentId: commentId as any }) as any,
-		resolveThread: ({ threadId, resolved }) => resolveThreadMutation({ threadId, resolved }) as any,
-	}), [docId, createThreadMutation, addCommentMutation, updateCommentMutation, deleteCommentMutation, resolveThreadMutation]);
+		createThread: ({ docId: d, blockId, content }) =>
+			createThreadRef.current({ docId: d, blockId: blockId ?? "", content }) as any,
+		createComment: ({ docId: d, blockId, threadId, content }) =>
+			addCommentRef.current({ docId: d, blockId: blockId ?? "", threadId, content }) as any,
+		updateComment: ({ commentId, content }) =>
+			updateCommentRef.current({ commentId: commentId as any, content }) as any,
+		deleteComment: ({ commentId }) =>
+			deleteCommentRef.current({ commentId: commentId as any }) as any,
+		resolveThread: ({ threadId, resolved }) =>
+			resolveThreadRef.current({ threadId, resolved }) as any,
+	}), [docId]); // Only depend on docId, refs always point to latest mutations
+
+	// Add ref for showRemoteCursors to prevent editor recreation when toggled
+	const showRemoteCursorsRef = useRef(showRemoteCursors);
+	useEffect(() => { showRemoteCursorsRef.current = showRemoteCursors; }, [showRemoteCursors]);
 
 	const tiptapSync = useTiptapSync(api.example, docId, { snapshotDebounceMs: 1000 });
 
@@ -104,7 +128,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 				return false;
 			});
 		}
-		return BlockNoteEditor.create({
+		const created = BlockNoteEditor.create({
 			schema: customSchema,
 			resolveUsers,
 			comments: { threadStore: threadStore as any },
@@ -113,21 +137,22 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			},
 			_extensions: {
 				remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => {
-					if (!showRemoteCursors) return [] as any[];
+					if (!showRemoteCursorsRef.current) return [] as any[]; // Use ref instead of prop
 					const filtered = (presenceRef.current as any[]).filter(p => p.userId !== userIdRef.current);
 					return filtered;
 				}) }),
 			},
 			initialContent: blocks.length > 0 ? blocks : undefined,
 		});
-	// Only re-create when initial snapshot or thread store changes
-	}, [tiptapSync.initialContent, resolveUsers, threadStore, showRemoteCursors]);
+		// Only re-create when initial content changes (on initial load) or docId changes
+		// All dynamic data (presence, cursors, comments) flows through refs
+		console.log("🚀 EDITOR CREATED", { docId, timestamp: new Date().toISOString() });
+		return created;
+	}, [tiptapSync.initialContent, docId]); // Minimal stable deps - no dynamic values!
 
-	const sync = useMemo(() => ({
-		editor: editorFromSync,
-		isLoading: tiptapSync.isLoading,
-		create: tiptapSync.create,
-	}), [editorFromSync, tiptapSync.isLoading, tiptapSync.create]);
+	// Remove unnecessary wrapper - use values directly
+	const editor = editorFromSync;
+	const isLoading = tiptapSync.isLoading;
 
 	const token = useAuthToken();
 	const colorRef = useRef<string>(`hsl(${Math.floor(Math.random() * 360)} 70% 45%)`);
@@ -148,13 +173,13 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 		const name = nameRef.current;
 		const interval = setInterval(() => {
 			if (!active) return;
-			const pos = (sync as any)?.editor?.prosemirrorState?.selection?.head ?? 0;
+			const pos = (editor as any)?.prosemirrorState?.selection?.head ?? 0;
 			heartbeat({ docId, cursor: String(pos), name, color }).catch(() => {});
 		}, 1000);
 		return () => { active = false; clearInterval(interval); };
-	}, [docId, heartbeat, token, (sync as any)?.editor]);
+	}, [docId, heartbeat, token, editor]);
 
-	const editorInst = (sync as any)?.editor as CustomBlockNoteEditor | null;
+	const editorInst = editor as CustomBlockNoteEditor | null;
 	useEffect(() => {
 		if (onEditorReady && editorInst) onEditorReady(editorInst);
 	}, [editorInst, onEditorReady]);
@@ -279,7 +304,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 
 	return (
 		<div className="mt-4" data-editor-theme={theme}>
-			{(sync as any)?.isLoading ? (
+			{isLoading ? (
 				<p style={{ padding: 16 }}>Loading…</p>
 			) : editorInst ? (
 				<BlockNoteView editor={editorInst} theme={theme} slashMenu={false} editable={editable}>
@@ -291,7 +316,14 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 					/>
 				</BlockNoteView>
 			) : (
-				<div style={{ padding: 16 }}>Editor not ready</div>
+				<div className="p-4">
+					<button
+						onClick={() => tiptapSync.create?.(INITIAL_DOCUMENT)}
+						className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+					>
+						Create Document
+					</button>
+				</div>
 			)}
 		</div>
 	);
