@@ -7,6 +7,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui";
+import type { Document } from "@/types/documents";
+import type { CustomBlockNoteEditor } from "@/components/editor/custom-blocks/custom-schema";
 
 interface TopBarProps {
 	documentTitle: string;
@@ -20,18 +22,18 @@ interface TopBarProps {
 	commentsOpen: boolean;
 	optionsOpen: boolean;
 	onToggleOptions: () => void;
-	editor?: any;
+	editor?: { manualSave?: () => Promise<void> } | CustomBlockNoteEditor | null;
 	theme?: "light" | "dark";
 }
 
 export function TopBar({ documentTitle, docId, documentId, readOnly = false, onToggleComments, commentsOpen, optionsOpen, onToggleOptions, editor, theme = "light" }: TopBarProps): ReactElement {
-	const documents = useQuery(api.documents.list, {}) as any[] | undefined;
+	const documents = useQuery(api.documents.list, {}) as Document[] | undefined;
 	const currentDoc = useMemo(() => (documents ?? []).find(d => String(d._id) === String(documentId ?? "")) ?? null, [documents, documentId]);
 	const publishMutation = useMutation(api.documents.publish);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [publishing, setPublishing] = useState(false);
 	const [localShareId, setLocalShareId] = useState<string | null>(null);
-	const effectiveShareId = localShareId ?? ((currentDoc as any)?.shareId ?? null);
+	const effectiveShareId = localShareId ?? (currentDoc?.shareId ?? null);
 	const shareUrl = typeof window !== "undefined" && effectiveShareId ? `${window.location.origin}/s/${effectiveShareId}` : null;
 
 	const isDark = theme === "dark";
@@ -71,7 +73,7 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 						className={iconBtnClass}
 						onClick={async () => {
 							try {
-								await (editor as any)?.manualSave?.();
+								await (editor as { manualSave?: () => Promise<void> } | null)?.manualSave?.();
 								// Lightweight toast without external lib
 								const t = document.createElement("div");
 								t.textContent = "Saved";
@@ -88,7 +90,7 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 								setTimeout(() => {
 									try { document.body.removeChild(t); } catch {}
 								}, 1500);
-							} catch (e) {
+							} catch (_e) {
 								const t = document.createElement("div");
 								t.textContent = "Save failed";
 								t.style.position = "fixed";
@@ -144,8 +146,9 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 										if (!currentDoc?._id) return;
 										setPublishing(true);
 										try {
-											const r = await publishMutation({ documentId: currentDoc._id });
-											setLocalShareId((r as any)?.shareId ?? null);
+								const r = await publishMutation({ documentId: currentDoc._id });
+								const share = (r as unknown as { shareId?: string })?.shareId ?? null;
+								setLocalShareId(share);
 										} finally {
 											setPublishing(false);
 										}

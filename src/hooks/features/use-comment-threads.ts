@@ -15,10 +15,11 @@ export interface ThreadWithComments<TThread = Thread, TComment = Comment> {
 }
 
 export function useCommentThreads(docId: string | null, includeResolved = true) {
-  const rows = (useQuery(
+  const rowsRaw = useQuery(
     api.comments.listByDoc,
     docId ? { docId, includeResolved } : "skip"
-  ) ?? []) as ThreadWithComments<Thread, Comment>[];
+  ) as ThreadWithComments<Thread, Comment>[] | undefined;
+  const rows = rowsRaw ?? [];
 
   // Collect author IDs for display resolution
   const authorIds = useMemo(() => {

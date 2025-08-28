@@ -6,8 +6,8 @@ export {};
 
 declare global {
   interface Window {
-    // Extend window object with custom properties as needed
-    // Example: customProperty?: string;
+    /** Optional custom property placeholder to satisfy empty interface rule. */
+    __appReserved__?: unknown;
   }
 
   // Generic API response type

@@ -14,6 +14,9 @@ import { useTiptapSync } from "@convex-dev/prosemirror-sync/tiptap";
 import { createRemoteCursorPlugin } from "@/components/editor";
 import { customSchema, type CustomBlockNoteEditor } from "./custom-blocks/custom-schema";
 import { getCustomSlashMenuItems } from "./custom-blocks/slash-menu-items";
+import type { PresenceData } from "@/types/presence";
+import type { Thread, Comment } from "@/types/comments";
+import type { Id } from "@/convex/_generated/dataModel";
 
 const INITIAL_DOCUMENT: JSONContent = { type: "doc", content: [] };
 
@@ -26,16 +29,17 @@ interface BlockNoteEditorProps {
 }
 
 export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabels = true, editable = true, theme = "light" }: BlockNoteEditorProps): ReactElement {
-	const presence = useQuery(api.presence.list, { docId }) ?? [];
-	const me = useQuery(api.comments.me, {});
-	const userId = (me as any)?.userId ?? null;
-	const userEmail = (me as any)?.email ?? null;
-	const threadsForDoc = (useQuery(api.comments.listByDoc, { docId, includeResolved: true }) ?? []) as Array<{ thread: any; comments: any[] }>;
+	const presence = useQuery(api.presence.list, { docId }) as PresenceData[] | undefined;
+	const me = useQuery(api.comments.me, {}) as { userId: string | null; email: string | null } | undefined;
+	const userId = me?.userId ?? null;
+	const userEmail = me?.email ?? null;
+	const threadsForDocRaw = useQuery(api.comments.listByDoc, { docId, includeResolved: true }) as Array<{ thread: Thread; comments: Comment[] }> | undefined;
+	const threadsForDoc = threadsForDocRaw ?? [];
 
 	// Keep latest presence in a ref so the plugin can read it without recreating the editor
-	const presenceRef = useRef<any[]>(presence as any);
+	const presenceRef = useRef<PresenceData[]>(presence ?? []);
 	useEffect(() => { 
-		presenceRef.current = presence as any;
+		presenceRef.current = presence ?? [];
 	}, [presence]);
 
 	// Keep userId in a ref to avoid editor recreation
@@ -46,8 +50,8 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 
 	const presenceMap = useMemo(() => {
 		const map: Record<string, { name: string; color: string }> = {};
-		for (const p of presence as any[]) {
-			map[(p as any).userId] = { name: (p as any).name, color: (p as any).color };
+		for (const p of (presence ?? [])) {
+			map[p.userId] = { name: p.name, color: p.color };
 		}
 		return map;
 	}, [presence]);
@@ -82,16 +86,16 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 	const threadStore = useMemo(() => new ConvexThreadStore(docId, {
 		userId: userId || "current",
 		createThread: ({ docId: d, blockId, content }) =>
-			createThreadRef.current({ docId: d, blockId: blockId ?? "", content }) as any,
+			createThreadRef.current({ docId: d, blockId: blockId ?? "", content }),
 		createComment: ({ docId: d, blockId, threadId, content }) =>
-			addCommentRef.current({ docId: d, blockId: blockId ?? "", threadId, content }) as any,
+			addCommentRef.current({ docId: d, blockId: blockId ?? "", threadId, content }),
 		updateComment: ({ commentId, content }) =>
-			updateCommentRef.current({ commentId: commentId as any, content }) as any,
+			updateCommentRef.current({ commentId: commentId as unknown as Id<"comments">, content }),
 		deleteComment: ({ commentId }) =>
-			deleteCommentRef.current({ commentId: commentId as any }) as any,
+			deleteCommentRef.current({ commentId: commentId as unknown as Id<"comments"> }),
 		resolveThread: ({ threadId, resolved }) =>
-			resolveThreadRef.current({ threadId, resolved }) as any,
-	}), [docId]); // Only depend on docId, refs always point to latest mutations
+			resolveThreadRef.current({ threadId, resolved }),
+	}), [docId, userId]);
 
 	const tiptapSync = useTiptapSync(api.documentSyncApi, docId, { snapshotDebounceMs: 1000 });
 
@@ -104,39 +108,47 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 		// Headless editor for PM->BlockNote conversion only (no comments in headless)
 		// The TipTap snapshot may include a PM mark type named "comment" which
 		// doesn't exist in BlockNote's headless schema. Strip those marks first.
-		function stripUnsupportedMarks(node: any): any {
+		type JSONNode = { marks?: Array<{ type?: string }>; content?: JSONNode[] } & Record<string, unknown>;
+		function stripUnsupportedMarks(node: unknown): JSONNode | unknown {
 			if (!node || typeof node !== "object") return node;
-			const clone: any = { ...node };
+			const clone: JSONNode = { ...(node as Record<string, unknown>) } as JSONNode;
 			if (Array.isArray(clone.marks)) {
-				clone.marks = clone.marks.filter((m: any) => m?.type !== "comment");
+				clone.marks = clone.marks.filter((m) => (m?.type ?? "") !== "comment");
 			}
 			if (Array.isArray(clone.content)) {
-				clone.content = clone.content.map(stripUnsupportedMarks);
+				clone.content = clone.content.map(stripUnsupportedMarks) as JSONNode[];
 			}
 			return clone;
 		}
-		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent as any);
+		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent as unknown) as JSONContent;
 		const headless = BlockNoteEditor.create({ schema: customSchema, resolveUsers, _headless: true });
-		const blocks: any[] = [];
-		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial as any);
-		if ((pmNode as any).firstChild) {
-			(pmNode as any).firstChild.descendants((node: any) => {
-				blocks.push(nodeToBlock(node, headless.pmSchema));
-				return false;
+		const blocks: unknown[] = [];
+		type PMNode = { firstChild?: PMNode; descendants: (f: (node: PMNode) => void | boolean) => void };
+		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial as JSONContent) as unknown as PMNode;
+		if (pmNode.firstChild) {
+			pmNode.firstChild.descendants((node: PMNode) => {
+				// nodeToBlock types are not exported; cast to unknown
+				blocks.push(nodeToBlock(node as unknown, headless.pmSchema));
+				return false as unknown as void;
 			});
 		}
 		const created = BlockNoteEditor.create({
 			schema: customSchema,
 			resolveUsers,
-			comments: { threadStore: threadStore as any },
+				comments: { threadStore: threadStore as unknown },
 			_tiptapOptions: {
 				extensions: [tiptapSync.extension],
 			},
 			_extensions: {
-				remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => {
-					const filtered = (presenceRef.current as any[]).filter(p => p.userId !== userIdRef.current);
-					return filtered as any;
-				}, { showLabels: true }) }),
+					remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => {
+						const filtered = (presenceRef.current).filter(p => p.userId !== userIdRef.current).map(p => ({
+							userId: p.userId,
+							name: p.name,
+							color: p.color,
+							cursor: p.cursor,
+						}));
+						return filtered;
+					}, { showLabels: true }) }),
 			},
 			initialContent: blocks.length > 0 ? blocks : undefined,
 		});
@@ -169,7 +181,8 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 		const name = nameRef.current;
 		const interval = setInterval(() => {
 			if (!active) return;
-			const pos = (editor as any)?.prosemirrorState?.selection?.head ?? 0;
+				type EditorStateHolder = { prosemirrorState?: { selection?: { head?: number } } };
+				const pos = (editor as unknown as EditorStateHolder)?.prosemirrorState?.selection?.head ?? 0;
 			heartbeat({ docId, cursor: String(pos), name, color }).catch(() => {});
 		}, 1000);
 		return () => { active = false; clearInterval(interval); };
@@ -183,13 +196,14 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 	// Attach a manualSave method onto the editor instance so external UI can trigger it
 	useEffect(() => {
 		if (!editorInst) return;
-		(editorInst as any).manualSave = async (): Promise<void> => {
+			type ManualSavable = { manualSave?: () => Promise<void>; prosemirrorEditor?: { state?: { doc?: { toJSON: () => unknown } } } };
+			(editorInst as unknown as ManualSavable).manualSave = async (): Promise<void> => {
 			try {
-				const pmEditor = (editorInst as any)?.prosemirrorEditor;
+			const pmEditor = (editorInst as unknown as { prosemirrorEditor?: { state?: { doc?: { toJSON: () => unknown } } } })?.prosemirrorEditor;
 				const docJson = pmEditor?.state?.doc?.toJSON();
 				if (!docJson) return;
 				const version: number = (latestVersion ?? 0) as number;
-				await submitSnapshot({ id: docId, version, content: JSON.stringify(docJson) } as any);
+				await submitSnapshot({ id: docId, version, content: JSON.stringify(docJson) } as unknown as { id: string; version: number; content: string });
 				if (typeof window !== "undefined") {
 					window.dispatchEvent(new CustomEvent("doc-saved", { detail: { docId, version: (version ?? 0) + 1, ts: Date.now(), source: "manual" } }));
 				}
@@ -232,12 +246,12 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 	useEffect(() => {
 		if (!editorInst) return;
 		
-		const handleTransaction = (transaction: any) => {
+		const handleTransaction = (transaction: { docChanged?: boolean; steps?: unknown[]; doc?: { content: { size: number } } }) => {
 			if (transaction.docChanged) {
 				console.log("📝 EDITOR TRANSACTION:", {
 					docId,
 					stepCount: transaction.steps.length,
-					stepTypes: transaction.steps.map((s: any) => s.stepType || 'unknown'),
+					stepTypes: (transaction.steps as Array<Record<string, unknown>>).map((s) => (s as { stepType?: string }).stepType || 'unknown'),
 					timestamp: new Date().toISOString(),
 					docSize: transaction.doc.content.size
 				});
@@ -245,7 +259,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 		};
 		
 		// Listen to ProseMirror transactions
-		const editor = (editorInst as any)?.prosemirrorEditor;
+		const editor = (editorInst as unknown as { prosemirrorEditor?: { on: (event: string, cb: (tr: unknown) => void) => void; off: (event: string, cb: (tr: unknown) => void) => void } })?.prosemirrorEditor;
 		if (editor) {
 			editor.on('transaction', handleTransaction);
 			console.log("🎧 EDITOR TRANSACTION LISTENER ATTACHED:", { docId });
@@ -262,7 +276,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 	const lastMarkedRef = useRef<Set<string>>(new Set());
 	useEffect(() => {
 		if (!editorInst) return;
-		const current = new Set<string>((threadsForDoc as any[]).map((t: any) => t.thread.blockId));
+			const current = new Set<string>(threadsForDoc.map((t) => t.thread.blockId));
 		for (const oldId of Array.from(lastMarkedRef.current)) {
 			if (!current.has(oldId)) {
 				const trySelectors = [
@@ -295,7 +309,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 				lastMarkedRef.current.add(id);
 			}
 		}
-		(threadStore as any).setThreadsFromConvex(threadsForDoc as any);
+			threadStore.setThreadsFromConvex(threadsForDoc);
 	}, [threadsForDoc, threadStore, editorInst]);
 
 	return (

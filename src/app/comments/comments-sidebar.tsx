@@ -27,13 +27,7 @@ export default function CommentsSidebar(props: { docId: string; readOnly?: boole
   const isDark = theme === "dark";
   const containerClass = ["w-80 shrink-0 p-4 overflow-y-auto border-l", isDark ? "bg-neutral-900 text-neutral-100 border-neutral-800" : "bg-white text-neutral-900"].join(" ");
   const tabBtn = (active: boolean) => ["px-2 py-1 rounded border text-xs", isDark ? "border-neutral-700" : "border-neutral-300", active ? (isDark ? "bg-neutral-800" : "bg-neutral-100") : (isDark ? "bg-neutral-900" : "bg-white")].join(" ");
-  const cardClass = ["rounded-lg border", isDark ? "border-neutral-700 bg-neutral-900" : "border-gray-200 bg-white"].join(" ");
-  const cardHover = isDark ? "hover:bg-neutral-800" : "hover:bg-gray-50";
-  const mutedText = isDark ? "text-neutral-400" : "text-gray-500";
-  const strongText = isDark ? "text-neutral-100" : "text-gray-700";
-  const avatarBg = isDark ? "bg-neutral-800" : "bg-gray-200";
-  const inputClass = ["w-full rounded border pl-4 pr-16 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500", isDark ? "border-neutral-700 bg-neutral-900 text-neutral-100 placeholder-neutral-500" : "border-gray-300"].join(" ");
-  const btnGhost = isDark ? "hover:bg-neutral-800" : "hover:bg-gray-50";
+  // Palette variants used within ThreadCard/ReplyInput; computed locally there.
 
   return (
     <aside className={containerClass}>
@@ -64,7 +58,6 @@ export default function CommentsSidebar(props: { docId: string; readOnly?: boole
           filtered.map(({ thread, comments }) => {
             const first = comments[0];
             const replies = comments.slice(1);
-            const [expanded, setExpanded] = [true, () => {}];
             return (
               <ThreadCard
                 key={thread.id}
@@ -102,7 +95,7 @@ function ThreadCard({
   replies,
   canEdit,
   canResolve,
-  onJumpToBlock,
+  _onJumpToBlock,
   onResolve,
   onDeleteComment,
   onReply,
@@ -123,6 +116,7 @@ function ThreadCard({
   resolveUsername: (id: string) => string;
   theme?: "light" | "dark";
 }): ReactElement {
+  void _onJumpToBlock; // mark as used to satisfy lint; prop is reserved for future use
   const [expanded, setExpanded] = useState<boolean>(false);
   const [showReply, setShowReply] = useState<boolean>(false);
   const [reply, setReply] = useState<string>("");

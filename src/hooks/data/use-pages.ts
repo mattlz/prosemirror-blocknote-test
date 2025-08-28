@@ -15,7 +15,7 @@ export function usePages(documentId: Id<"documents"> | null) {
   const removePage = useMutation(api.pages.remove);
   const createSubpage = useMutation(api.pages.createSubpage);
   
-  const safePages = pages ?? [];
+  const safePages = useMemo(() => pages ?? [], [pages]);
   
   const topLevelPages = useMemo(() => 
     safePages.filter(p => !p.parentPageId).sort((a, b) => a.order - b.order), 
@@ -62,4 +62,3 @@ export function usePages(documentId: Id<"documents"> | null) {
     operations 
   };
 }
-

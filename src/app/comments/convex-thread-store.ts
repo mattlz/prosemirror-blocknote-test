@@ -1,4 +1,5 @@
 import type { CommentBody, CommentData, ThreadData } from "@blocknote/core/comments";
+import type { Comment as ConvexComment, Thread as ConvexThread } from "@/types/comments";
 import { DefaultThreadStoreAuth, ThreadStore } from "@blocknote/core/comments";
 
 type CreateThreadArgs = {
@@ -24,12 +25,18 @@ export type ConvexThreadStoreDeps = {
   resolveThread: (args: { threadId: string; resolved?: boolean }) => Promise<unknown>;
 };
 
+type BNNode = { text?: string; content?: BNNode[] };
+
 function plainTextFromBody(body: CommentBody): string {
   try {
     // Body is a BlockNote doc (array of blocks). Extract plain text.
-    const nodes: any[] = Array.isArray(body) ? body : (body && (body as any).content) ? (body as any).content : [];
+    const nodes: BNNode[] = Array.isArray(body)
+      ? (body as unknown as BNNode[])
+      : (typeof body === "object" && body !== null && "content" in (body as Record<string, unknown>)
+          ? ((body as Record<string, unknown>).content as BNNode[])
+          : []);
     const parts: string[] = [];
-    const walk = (n: any) => {
+    const walk = (n: BNNode) => {
       if (!n) return;
       if (typeof n.text === "string") parts.push(n.text);
       if (Array.isArray(n.content)) n.content.forEach(walk);
@@ -69,7 +76,7 @@ export class ConvexThreadStore extends ThreadStore {
   }
 
   // Called from React layer when Convex query updates
-  public setThreadsFromConvex(rows: Array<{ thread: any; comments: any[] }>): void {
+  public setThreadsFromConvex(rows: Array<{ thread: ConvexThread; comments: ConvexComment[] }>): void {
     const map = new Map<string, ThreadData>();
     for (const { thread, comments } of rows) {
       const t: ThreadData = {
@@ -80,7 +87,7 @@ export class ConvexThreadStore extends ThreadStore {
         resolved: !!thread.resolved,
         metadata: { docId: thread.docId, blockId: thread.blockId },
       };
-      const cs: CommentData[] = comments.map((c: any) => ({
+      const cs: CommentData[] = comments.map((c) => ({
         type: "comment",
         id: String(c._id),
         userId: c.authorId,
@@ -102,7 +109,7 @@ export class ConvexThreadStore extends ThreadStore {
   }
 
   // ThreadStore interface
-  async createThread(options: { initialComment: { body: CommentBody; metadata?: any }; metadata?: any }): Promise<ThreadData> {
+  async createThread(options: { initialComment: { body: CommentBody; metadata?: unknown }; metadata?: unknown }): Promise<ThreadData> {
     const text = plainTextFromBody(options.initialComment.body);
     const res = await this.deps.createThread({ docId: this.docId, content: text });
     const now = new Date();
@@ -117,7 +124,7 @@ export class ConvexThreadStore extends ThreadStore {
         {
           type: "comment",
           id: "temp",
-          userId: (this.auth as any).userId ?? "",
+          userId: this.deps.userId ?? "",
           createdAt: now,
           updatedAt: now,
           reactions: [],
@@ -130,14 +137,14 @@ export class ConvexThreadStore extends ThreadStore {
     return td;
   }
 
-  async addComment(options: { comment: { body: CommentBody; metadata?: any }; threadId: string }): Promise<CommentData> {
+  async addComment(options: { comment: { body: CommentBody; metadata?: unknown }; threadId: string }): Promise<CommentData> {
     const text = plainTextFromBody(options.comment.body);
     await this.deps.createComment({ docId: this.docId, threadId: options.threadId, content: text });
     const now = new Date();
     return {
       type: "comment",
       id: "temp",
-      userId: (this.auth as any).userId ?? "",
+      userId: this.deps.userId ?? "",
       createdAt: now,
       updatedAt: now,
       reactions: [],
@@ -146,7 +153,7 @@ export class ConvexThreadStore extends ThreadStore {
     };
   }
 
-  async updateComment(options: { comment: { body: CommentBody; metadata?: any }; threadId: string; commentId: string }): Promise<void> {
+  async updateComment(options: { comment: { body: CommentBody; metadata?: unknown }; threadId: string; commentId: string }): Promise<void> {
     const text = plainTextFromBody(options.comment.body);
     await this.deps.updateComment({ commentId: options.commentId, content: text });
   }
@@ -197,5 +204,4 @@ export class ConvexThreadStore extends ThreadStore {
     };
   }
 }
-
 

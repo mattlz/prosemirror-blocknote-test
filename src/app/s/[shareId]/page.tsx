@@ -10,14 +10,13 @@ export default function SharedDocPage({ params }: { params: Promise<{ shareId: s
   const doc = useQuery(api.documents.getByShareId, { shareId });
 
   if (doc === undefined) {
-    return <div className="p-6">Loading…</div> as any;
+    return <div className="p-6">Loading…</div>;
   }
   if (doc === null) {
-    return <div className="p-6">This shared document link is invalid or has been revoked.</div> as any;
+    return <div className="p-6">This shared document link is invalid or has been revoked.</div>;
   }
 
   // Render the regular shell in read-only mode; it will pick the first page automatically
-  return <EditorShell documentId={doc._id as any} readOnly /> as any;
+  return <EditorShell documentId={String(doc._id)} readOnly />;
 }
-
 

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import EmojiPicker from "emoji-picker-react";
+import EmojiPicker, { Theme } from "emoji-picker-react";
 import { SmilePlus } from "lucide-react";
 
 interface IconPickerProps {
@@ -38,7 +38,7 @@ export function IconPicker({ value, onChange, theme = "light" }: IconPickerProps
 						}}
 						width={320}
 						height={400}
-						theme={isDark ? "dark" : "light" as any}
+                    theme={isDark ? Theme.DARK : Theme.LIGHT}
 					/>
 					<button 
 						className={["mt-2 w-full rounded border px-2 py-1 text-xs", isDark ? "bg-neutral-900 border-neutral-700 hover:bg-neutral-800 text-neutral-200" : "bg-white hover:bg-neutral-50"].join(" ")} 

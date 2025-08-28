@@ -47,11 +47,11 @@ Phase D — Comments Hooks
 - [x] Add `useCommentThreads()` and `useCommentThread()` — temp skeleton in `src/temp/refactor/hooks/features/use-comment-threads.ts`
 - [x] Add actions: `createThread`, `createComment`, `replyToComment`, `resolveThread`, `deleteComment` (also `updateComment`)
 - [x] Refactor `src/app/comments/*` to consume hooks (UI unchanged)
-- [ ] Tighten types (`Comment`, `Thread`) and remove `any`
+- [x] Tighten types (`Comment`, `Thread`) and remove `any`
 - Notes:
   - Implemented hooks in `src/hooks/features/use-comment-threads.ts` and re-exported from `components/features/index.ts`.
   - Updated `comments-sidebar.tsx` and `comment-thread.tsx` to use hooks; preserved all markup/classes.
-  - Follow-up: replace remaining `any` in comments components with `src/types/comments.ts` shapes.
+  - Replaced anys in `convex-thread-store.ts` with concrete types and removed dynamic auth casts.
 
 Phase E — Editor Decomposition & Hooks
 - [x] Add editor hooks — temp skeletons in `src/temp/refactor/hooks/editor/*`
