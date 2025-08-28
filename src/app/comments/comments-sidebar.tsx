@@ -1,14 +1,17 @@
 "use client";
 import { useMemo, useState, type ReactElement } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useCommentThreads, useCommentActions } from "@/hooks/features/use-comment-threads";
+import type { Id } from "@/convex/_generated/dataModel";
+import type { Comment, Thread } from "@/types/comments";
 
 export default function CommentsSidebar(props: { docId: string; readOnly?: boolean; onJumpToBlock?: (blockId: string) => void; onCreateThread?: (content: string) => void | Promise<void>; theme?: "light" | "dark" }): ReactElement {
   const { docId, readOnly = false, onJumpToBlock, onCreateThread, theme = "light" } = props;
   const [filter, setFilter] = useState<"all" | "open" | "resolved">("all");
   const includeResolved = filter !== "open";
-  const threads = (useQuery(api.comments.listByDoc, { docId, includeResolved }) ?? []) as Array<{ thread: any; comments: any[] }>;
-  const me = useQuery(api.comments.me, {} as any) as any;
+  const { threads, usersMap } = useCommentThreads(docId, includeResolved);
+  const me = useQuery(api.comments.me, {});
   const [newContent, setNewContent] = useState<string>("");
   const filtered = useMemo(() => {
     if (filter === "all") return threads;
@@ -16,25 +19,10 @@ export default function CommentsSidebar(props: { docId: string; readOnly?: boole
     return threads.filter((t) => t.thread.resolved);
   }, [threads, filter]);
 
-  const resolveThread = useMutation(api.comments.resolveThread);
-  const deleteComment = useMutation(api.comments.deleteComment);
-  const replyToComment = useMutation(api.comments.replyToComment);
-  const updateComment = useMutation(api.comments.updateComment);
+  const { resolveThread, deleteComment, replyToComment, updateComment } = useCommentActions();
 
   // Author user info resolution for display
-  const allAuthorIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const { comments } of filtered) {
-      for (const c of comments) { if (c?.authorId) ids.add(c.authorId); }
-    }
-    return Array.from(ids);
-  }, [filtered]);
-  const users = useQuery(api.comments.resolveUsers, { ids: allAuthorIds } as any) as Array<{ id: string; username: string; avatarUrl: string }> | undefined;
-  const usersMap = useMemo(() => {
-    const m: Record<string, { username: string; avatarUrl: string }> = {};
-    for (const u of users ?? []) { m[u.id] = { username: u.username, avatarUrl: u.avatarUrl }; }
-    return m;
-  }, [users]);
+  // usersMap is provided by the hook
 
   const isDark = theme === "dark";
   const containerClass = ["w-80 shrink-0 p-4 overflow-y-auto border-l", isDark ? "bg-neutral-900 text-neutral-100 border-neutral-800" : "bg-white text-neutral-900"].join(" ");
@@ -87,15 +75,15 @@ export default function CommentsSidebar(props: { docId: string; readOnly?: boole
                 onJumpToBlock={onJumpToBlock}
                 canResolve={!readOnly && me?.userId && me.userId === thread.creatorId}
                 onResolve={(resolved: boolean) => { if (readOnly) return; resolveThread({ threadId: thread.id, resolved }).catch(() => {}); }}
-                onDeleteComment={(commentId: string) => { if (readOnly) return; deleteComment({ commentId: commentId as any }).catch(() => {}); }}
+                onDeleteComment={(commentId: string) => { if (readOnly) return; deleteComment({ commentId: commentId as unknown as Id<"comments"> }).catch(() => {}); }}
                 onReply={async (content: string) => {
                   if (readOnly) return;
                   if (!first?._id) return;
-                  await replyToComment({ parentCommentId: first._id, content }).catch(() => {});
+                  await replyToComment({ parentCommentId: first._id as unknown as Id<"comments">, content }).catch(() => {});
                 }}
                 onEdit={async (commentId: string, content: string) => {
                   if (readOnly) return;
-                  await updateComment({ commentId: commentId as any, content }).catch(() => {});
+                  await updateComment({ commentId: commentId as unknown as Id<"comments">, content }).catch(() => {});
                 }}
                 resolveUsername={(id: string) => usersMap[id]?.username ?? id}
                 theme={theme}
@@ -122,9 +110,9 @@ function ThreadCard({
   resolveUsername,
   theme = "light",
 }: {
-  thread: any;
-  first: any;
-  replies: any[];
+  thread: Thread;
+  first: Comment;
+  replies: Comment[];
   canEdit: (authorId: string) => boolean;
   canResolve: boolean;
   onJumpToBlock?: (blockId: string) => void;
@@ -285,7 +273,7 @@ function ThreadCard({
           
           {replies.length > 0 ? (
             <div className={["p-3 space-y-3 border-t", isDark ? "border-neutral-800" : "border-gray-100"].join(" ")}>
-              {replies.map((c: any) => {
+              {replies.map((c) => {
                 const replyAuthor = resolveUsername(c.authorId) || "User";
                 const replyInitial = (replyAuthor?.[0] ?? "U").toUpperCase();
                 const replyTime = formatTime(c.createdAt);
@@ -427,6 +415,3 @@ function formatTime(timestamp: number): string {
            ` at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
   }
 }
-
-
-

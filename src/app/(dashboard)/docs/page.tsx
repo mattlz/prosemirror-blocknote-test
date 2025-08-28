@@ -1,22 +1,20 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState, type ReactElement } from "react";
+import { type ReactElement } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useDocuments, useDocumentActions, useDocumentFilter } from "@/hooks";
+import type { Document } from "@/types/documents";
 
 export default function DocsPage(): ReactElement {
 	const { signOut } = useAuthActions();
 	const currentUser = useQuery(api.users.current);
 	const router = useRouter();
-	const docs = useQuery(api.documents.list, {}) ?? [];
-	const create = useMutation(api.documents.create);
-	const rename = useMutation(api.documents.rename);
-	const remove = useMutation(api.documents.remove);
-
-	const [filter, setFilter] = useState("");
-	const filtered = useMemo(() => docs.filter((d: any) => d.title.toLowerCase().includes(filter.toLowerCase())), [docs, filter]);
+	const { documents } = useDocuments();
+	const { create, rename, remove } = useDocumentActions();
+	const { filter, setFilter, filtered } = useDocumentFilter(documents as Document[]);
 
 	return (
 		<div className="mx-auto max-w-5xl p-6">
@@ -32,7 +30,6 @@ export default function DocsPage(): ReactElement {
 					<button className="inline-flex h-9 items-center rounded-md border px-3" onClick={async () => {
 						const title = prompt("New document title", "Untitled Document") || "Untitled Document";
 						const { documentId: id } = await create({ title });
-						
 						// Redirect to the new document editor
 						router.push(`/editor/${id}`);
 					}}>New</button>
@@ -48,7 +45,7 @@ export default function DocsPage(): ReactElement {
 						</tr>
 					</thead>
 					<tbody>
-						{filtered.map((d: any) => (
+						{filtered.map((d: Document) => (
 							<tr key={d._id} className="border-t">
 								<td className="px-3 py-2">
 									<Link className="underline" href={`/editor/${d._id}`}>{d.title}</Link>
@@ -57,10 +54,10 @@ export default function DocsPage(): ReactElement {
 									<div className="flex gap-2">
 										<button className="inline-flex h-8 items-center rounded-md border px-2 text-xs" onClick={async () => {
 											const title = prompt("Rename document", d.title) || d.title;
-											await rename({ documentId: d._id, title });
+											await rename(d._id, title);
 										}}>Rename</button>
 										<button className="inline-flex h-8 items-center rounded-md border px-2 text-xs" onClick={async () => {
-											if (confirm("Delete document?")) await remove({ documentId: d._id });
+											if (confirm("Delete document?")) await remove(d._id);
 										}}>Delete</button>
 									</div>
 								</td>
@@ -72,4 +69,3 @@ export default function DocsPage(): ReactElement {
 		</div>
 	);
 }
-

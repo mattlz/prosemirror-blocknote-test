@@ -1,15 +1,13 @@
 "use client";
-import { useMemo, useState, type ReactElement } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useState, type ReactElement } from "react";
+import { useCommentThread, useCommentActions } from "@/hooks/features/use-comment-threads";
 
 export function CommentThread({ threadId, onJumpToBlock }: { threadId: string; onJumpToBlock?: (blockId: string) => void }): ReactElement {
-  const data = useQuery(api.comments.getThread, { threadId }) as any;
+  const { data } = useCommentThread(threadId);
   const [expanded, setExpanded] = useState<boolean>(true);
-  const deleteComment = useMutation(api.comments.deleteComment);
-  const resolveThread = useMutation(api.comments.resolveThread);
+  const { deleteComment, resolveThread } = useCommentActions();
 
-  if (!data) return <div className="text-sm text-neutral-500">Loading…</div> as any;
+  if (!data) return <div className="text-sm text-neutral-500">Loading…</div>;
   const { thread, comments } = data;
   const first = comments[0];
   const replies = comments.slice(1);
@@ -31,7 +29,7 @@ export function CommentThread({ threadId, onJumpToBlock }: { threadId: string; o
           <div className="text-sm">{first?.content}</div>
           {replies.length > 0 ? (
             <div className="pl-3 border-l space-y-2">
-              {replies.map((c: any) => (
+              {replies.map((c) => (
                 <div key={c._id} className="text-sm flex items-start justify-between gap-2">
                   <div className="flex-1">
                     <div className="text-xs text-neutral-500">{new Date(c.createdAt).toLocaleString()}</div>
@@ -54,5 +52,3 @@ export function CommentThread({ threadId, onJumpToBlock }: { threadId: string; o
     </div>
   );
 }
-
-
