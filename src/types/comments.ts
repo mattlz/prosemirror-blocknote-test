@@ -7,6 +7,11 @@ export interface Comment {
 	authorId: string;
 	createdAt: number;
 	updatedAt: number;
+	// NEW optional fields for generic targets
+	targetType?: string; // e.g., "doc", "task", etc.
+	targetId?: string; // ID of the target entity
+  resolved?: boolean; // keep parity with backend optional field
+  parentCommentId?: string; // if present locally
 }
 
 export interface Thread {
@@ -17,4 +22,7 @@ export interface Thread {
 	createdAt: number;
 	resolved?: boolean;
 	creatorId?: string;
+	// NEW optional fields for generic targets
+	targetType?: string; // e.g., "doc", "task", etc.
+	targetId?: string; // ID of the target entity
 }

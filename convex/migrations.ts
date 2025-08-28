@@ -22,6 +22,49 @@ export const backfillUsers = mutation({
 });
 
 
+// Add after backfillUsers export:
+export const backfillCommentTargets = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Backfill threads
+    const threads = await ctx.db.query("commentThreads").collect();
+    let threadsPatched = 0;
+    for (const t of threads) {
+      const needs = (t as any).targetType === undefined || (t as any).targetId === undefined;
+      if (needs) {
+        await ctx.db.patch(t._id, {
+          targetType: "doc",
+          targetId: t.docId,
+        });
+        threadsPatched++;
+      }
+    }
+
+    // Map threads by their custom id field for comment lookup
+    const threadMap = new Map(threads.map((t) => [t.id, t]));
+
+    // Backfill comments
+    const comments = await ctx.db.query("comments").collect();
+    let commentsPatched = 0;
+    for (const c of comments) {
+      const needs = (c as any).targetType === undefined || (c as any).targetId === undefined;
+      if (!needs) continue;
+
+      const owningThread = threadMap.get(c.threadId);
+      const targetType = (owningThread as any)?.targetType ?? "doc";
+      const targetId = (owningThread as any)?.targetId ?? c.docId;
+
+      await ctx.db.patch(c._id, {
+        targetType,
+        targetId,
+      });
+      commentsPatched++;
+    }
+
+    return { threadsPatched, commentsPatched };
+  },
+});
+
 // Copy all rows from `pages` to `documentPages` while preserving hierarchy.
 // Safe to run once; it will no-op if `documentPages` already has data.
 export const migratePagesToDocumentPages = mutation({
@@ -78,5 +121,4 @@ export const migratePagesToDocumentPages = mutation({
     return { migrated: inserted, patchedParents, skipped: false } as const;
   },
 });
-
 

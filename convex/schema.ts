@@ -70,11 +70,16 @@ export default defineSchema({
 		updatedAt: v.number(),
 		resolved: v.optional(v.boolean()),
 		parentCommentId: v.optional(v.id("comments")),
+		// NEW fields for cross-context support:
+		targetType: v.optional(v.string()),
+		targetId: v.optional(v.string()),
 	})
 		.index("by_doc", ["docId"])
 		.index("by_thread", ["threadId"])
 		.index("by_block", ["blockId"])
-		.index("by_doc_resolved", ["docId", "resolved"]),
+		.index("by_doc_resolved", ["docId", "resolved"]) 
+		// NEW index
+		.index("by_target", ["targetType", "targetId"]),
 	commentThreads: defineTable({
 		id: v.string(),
 		docId: v.string(),
@@ -82,9 +87,16 @@ export default defineSchema({
 		createdAt: v.number(),
 		resolved: v.optional(v.boolean()),
 		creatorId: v.optional(v.string()),
+		// NEW fields for cross-context support:
+		targetType: v.optional(v.string()),
+		targetId: v.optional(v.string()),
 	})
 		.index("by_doc", ["docId"]) 
-		.index("by_block", ["blockId"]),
+		.index("by_block", ["blockId"]) 
+		// NEW index to look up by external thread id
+		.index("by_id", ["id"]) 
+		// NEW index
+		.index("by_target", ["targetType", "targetId"]),
 
 	weeklyUpdates: defineTable({
 		docId: v.string(),

@@ -65,9 +65,10 @@ export const listByThread = query({
 export const getThread = query({
   args: { threadId: v.string() },
   handler: async (ctx, { threadId }) => {
-    const thread = (await ctx.db
+    const thread = await ctx.db
       .query("commentThreads")
-      .collect()).find((t) => t.id === threadId);
+      .withIndex("by_id", q => q.eq("id", threadId))
+      .first();
     if (!thread) return null;
     const comments = await ctx.db
       .query("comments")
@@ -85,7 +86,17 @@ export const createThread = mutation({
     if (userId === null) throw new Error("Unauthenticated");
     const now = Date.now();
     const threadId = `${now}-${Math.random().toString(36).slice(2, 10)}`;
-    await ctx.db.insert("commentThreads", { id: threadId, docId, blockId, createdAt: now, resolved: false, creatorId: userId });
+    await ctx.db.insert("commentThreads", {
+      id: threadId,
+      docId,
+      blockId,
+      createdAt: now,
+      resolved: false,
+      creatorId: userId,
+      // NEW default target for editor context
+      targetType: "doc",
+      targetId: docId,
+    });
     await ctx.db.insert("comments", {
       docId,
       blockId,
@@ -94,6 +105,9 @@ export const createThread = mutation({
       authorId: userId,
       createdAt: now,
       updatedAt: now,
+      // NEW default target for editor context
+      targetType: "doc",
+      targetId: docId,
     });
     return { threadId };
   },
@@ -105,11 +119,13 @@ export const createComment = mutation({
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
     const now = Date.now();
-    const thread = (await ctx.db
+    const thread = await ctx.db
       .query("commentThreads")
-      .withIndex("by_doc", (q) => q.eq("docId", docId))
-      .collect()).find((t) => t.id === threadId);
+      .withIndex("by_id", (q) => q.eq("id", threadId))
+      .first();
     if (!thread) throw new Error("Thread not found");
+    // Ensure the thread belongs to the provided doc and block
+    if (thread.docId !== docId) throw new Error("Invalid document for thread");
     if (thread.blockId !== blockId) {
       // Ensure the thread belongs to the provided block
       throw new Error("Invalid block for thread");
@@ -122,6 +138,9 @@ export const createComment = mutation({
       authorId: userId,
       createdAt: now,
       updatedAt: now,
+      // NEW default target for editor context
+      targetType: "doc",
+      targetId: docId,
     });
     return inserted;
   },
@@ -144,6 +163,9 @@ export const replyToComment = mutation({
       createdAt: now,
       updatedAt: now,
       parentCommentId: parentCommentId,
+      // NEW: inherit from parent if set; fallback to doc
+      targetType: (parent as any).targetType ?? "doc",
+      targetId: (parent as any).targetId ?? parent.docId,
     });
   },
 });
@@ -177,7 +199,10 @@ export const resolveThread = mutation({
   handler: async (ctx, { threadId, resolved }) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
-    const thread = (await ctx.db.query("commentThreads").collect()).find((t) => t.id === threadId);
+    const thread = await ctx.db
+      .query("commentThreads")
+      .withIndex("by_id", q => q.eq("id", threadId))
+      .first();
     if (!thread) throw new Error("Thread not found");
     if (thread.creatorId && thread.creatorId !== userId) throw new Error("Forbidden");
     const newResolved = resolved ?? true;
@@ -191,5 +216,3 @@ export const resolveThread = mutation({
     await Promise.all(comments.map((c) => ctx.db.patch(c._id, { resolved: newResolved })));
   },
 });
-
-
