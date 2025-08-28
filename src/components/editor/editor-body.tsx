@@ -1,12 +1,15 @@
 "use client";
-import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import CommentsSidebar from "@/app/comments/comments-sidebar";
 import { BlockNoteEditor } from "@/components/editor";
 import { PageSidebar, IconPicker } from "@/components/sidebar";
-import { TopBar, SidebarOpenButton } from "@/components/layout";
+import { SidebarOpenButton } from "@/components/layout";
 import { PageOptionsModal } from "@/components/modals/page-options-modal";
+import { EditorToolbar } from "@/components/editor/editor-toolbar";
+import { useEditorDoc } from "@/hooks/editor/use-editor-doc";
+import { useEditorPresence } from "@/hooks/editor/use-editor-presence";
 
 export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null; readOnly?: boolean }): ReactElement {
 	const [documentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);
@@ -16,15 +19,12 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	const [showOpenButton, setShowOpenButton] = useState<boolean>(false);
 	const [commentsOpen, setCommentsOpen] = useState<boolean>(false);
 	const [optionsOpen, setOptionsOpen] = useState<boolean>(false);
-	// Remote cursors are always enabled; we only toggle labels
-	const [showCursorLabels, setShowCursorLabels] = useState<boolean>(true);
+	// Presence UI state (cursor labels toggle)
+	const { showCursorLabels, setShowCursorLabels } = useEditorPresence(true);
 	const [pageWidth, setPageWidth] = useState<"default" | "full">("default");
 	const [theme, setTheme] = useState<"light" | "dark">("light");
 
-	const [editorInstance, setEditorInstance] = useState<any>(null);
-	const editorRef = useRef<any>(null);
-	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
-	const [saveErrorAt, setSaveErrorAt] = useState<number | null>(null);
+	const { editorRef, editorInstance, handleEditorReady, lastSavedAt, saveErrorAt, formatRelative } = useEditorDoc(pageDocId);
 	const createPage = useMutation(api.pages.create);
 	const setIconMutation = useMutation(api.pages.setIcon);
 	const createThreadMutation = useMutation(api.comments.createThread);
@@ -60,53 +60,11 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 		}
 	}, [sidebarOpen]);
 
-	// Listen for global save events from the editor (manual + autosave)
-	useEffect(() => {
-		const onSaved = (e: any) => {
-			if (!pageDocId || e?.detail?.docId !== pageDocId) return;
-			setLastSavedAt(Date.now());
-			setSaveErrorAt(null);
-		};
-		const onSaveError = (e: any) => {
-			if (!pageDocId || e?.detail?.docId !== pageDocId) return;
-			setSaveErrorAt(Date.now());
-		};
-		if (typeof window !== "undefined") {
-			window.addEventListener("doc-saved", onSaved as any);
-			window.addEventListener("doc-save-error", onSaveError as any);
-		}
-		return () => {
-			if (typeof window !== "undefined") {
-				window.removeEventListener("doc-saved", onSaved as any);
-				window.removeEventListener("doc-save-error", onSaveError as any);
-			}
-		};
-	}, [pageDocId]);
-
-	// Periodic tick so relative time updates even without new saves
-	useEffect(() => {
-		const interval = setInterval(() => {
-			// trigger a render by toggling a state that we don't otherwise use
-			setLastSavedAt((v) => (v !== null ? v : v));
-		}, 10000);
-		return () => clearInterval(interval);
-	}, []);
-
-	function formatRelative(ts: number | null): string {
-		if (!ts) return "";
-		const seconds = Math.floor((Date.now() - ts) / 1000);
-		if (seconds < 60) return "Just now";
-		const minutes = Math.floor(seconds / 60);
-		if (minutes < 60) return `${minutes}m ago`;
-		const hours = Math.floor(minutes / 60);
-		if (hours < 24) return `${hours}h ago`;
-		const days = Math.floor(hours / 24);
-		return `${days}d ago`;
-	}
+	// Save lifecycle handled by useEditorDoc
 
 	return (
 		<div className="h-screen w-full overflow-hidden flex flex-col">
-			<TopBar
+			<EditorToolbar
 				documentTitle={documentTitle}
 				docId={pageDocId}
 				documentId={documentId}
@@ -153,10 +111,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 									}} />
 									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
 								</div>
-								<BlockNoteEditor docId={pageDocId} showCursorLabels={showCursorLabels} editable={!props.readOnly} theme={theme} onEditorReady={(e: any) => { 
-									editorRef.current = e; 
-									setEditorInstance(e);
-								}} />
+								<BlockNoteEditor docId={pageDocId} showCursorLabels={showCursorLabels} editable={!props.readOnly} theme={theme} onEditorReady={handleEditorReady} />
 							</div>
 						</div>
 					)}
@@ -237,5 +192,3 @@ export default function Editor(props: { documentId?: string | null; readOnly?: b
 		<EditorBody initialDocumentId={props.documentId ?? null} readOnly={props.readOnly} />
 	);
 }
-
-

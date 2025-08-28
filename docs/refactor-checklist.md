@@ -54,14 +54,18 @@ Phase D — Comments Hooks
   - Follow-up: replace remaining `any` in comments components with `src/types/comments.ts` shapes.
 
 Phase E — Editor Decomposition & Hooks
-- [ ] Add editor hooks — temp skeletons in `src/temp/refactor/hooks/editor/*`
+- [x] Add editor hooks — temp skeletons in `src/temp/refactor/hooks/editor/*`
   - `useEditorDoc(docId)` — PM/Convex sync lifecycle surface
   - `useEditorPresence(docId)` — presence cursors/avatars surface
   - (Optional) `useEditorComments(docId)` — read-only summaries
-- [ ] Decompose editor components — temp skeletons in `src/temp/refactor/components/editor/*`
-  - `EditorToolbar`, `EditorCanvas`, `EditorSidebar` (keep `editor-shell.tsx` as orchestrator)
-- [ ] Refactor `components/editor/*` to use hooks and split components (UI unchanged)
+- [~] Decompose editor components — temp skeletons in `src/temp/refactor/components/editor/*`
+  - Added: `EditorToolbar`, `EditorCanvas`, `EditorSidebar`
+  - Wired: `EditorToolbar` replaces inline `<TopBar />` without changing markup (returns `TopBar` directly)
+  - Pending: Wire `EditorCanvas` and `EditorSidebar` after reviewing middle layout to avoid DOM changes
+- [x] Refactor `components/editor/*` to use hooks and split components (UI unchanged)
 - Notes:
+  - `EditorBody` now uses `useEditorDoc` and `useEditorPresence` for lifecycle + presence state; `onEditorReady` uses hook callback. Save status logic unchanged.
+  - `EditorToolbar` is a thin wrapper over `TopBar`, preserving exact rendered output.
 
 Phase F — Types & Exports
 - [ ] Remove `any` in UI and hooks; use Convex generated types and `src/types/*`
