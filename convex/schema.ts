@@ -22,24 +22,10 @@ export default defineSchema({
 		publishedAt: v.optional(v.number()),
 	}).index("by_owner", ["ownerId"]).index("by_created", ["createdAt"]).index("by_shareId", ["shareId"]),
 
-	// New table name to align with main app. Schema mirrors `pages` exactly.
+	// Table for document page hierarchy (replaces legacy `pages`)
 	documentPages: defineTable({
 		documentId: v.id("documents"),
 		parentPageId: v.optional(v.id("documentPages")),
-		docId: v.string(),
-		title: v.string(),
-		icon: v.optional(v.string()),
-		order: v.number(),
-		createdAt: v.number(),
-	})
-		.index("by_document", ["documentId"]) 
-		.index("by_document_parent", ["documentId", "parentPageId"]) 
-		.index("by_document_order", ["documentId", "order"]) 
-		.index("by_docId", ["docId"]),
-
-	pages: defineTable({
-		documentId: v.id("documents"),
-		parentPageId: v.optional(v.id("pages")),
 		docId: v.string(),
 		title: v.string(),
 		icon: v.optional(v.string()),
@@ -93,8 +79,8 @@ export default defineSchema({
 	})
 		.index("by_doc", ["docId"]) 
 		.index("by_block", ["blockId"]) 
-		// NEW index to look up by external thread id
-		.index("by_id", ["id"]) 
+		// NEW index to look up by external thread id (avoid reserved names)
+		.index("by_public_id", ["id"]) 
 		// NEW index
 		.index("by_target", ["targetType", "targetId"]),
 

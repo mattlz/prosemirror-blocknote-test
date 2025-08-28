@@ -36,14 +36,8 @@ export const create = mutation({
             timestamp: new Date().toISOString()
         });
 
-        // Create a default page for this document
-        // Prefer new table if already populated for this document; otherwise fallback to legacy during transition
-        const hasNew = await ctx.db
-            .query("documentPages")
-            .withIndex("by_document", q => q.eq("documentId", id))
-            .first();
-        const target = hasNew ? "documentPages" : "pages";
-        const pageId = await ctx.db.insert(target as any, {
+        // Create a default page for this document (documentPages only)
+        const pageId = await ctx.db.insert("documentPages" as any, {
             title,
             documentId: id,
             order: 0,
@@ -143,5 +137,4 @@ export const createWeeklyUpdate = mutation({
         return id;
     },
 });
-
 

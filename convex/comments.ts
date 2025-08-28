@@ -67,7 +67,7 @@ export const getThread = query({
   handler: async (ctx, { threadId }) => {
     const thread = await ctx.db
       .query("commentThreads")
-      .withIndex("by_id", q => q.eq("id", threadId))
+      .withIndex("by_public_id", q => q.eq("id", threadId))
       .first();
     if (!thread) return null;
     const comments = await ctx.db
@@ -121,7 +121,7 @@ export const createComment = mutation({
     const now = Date.now();
     const thread = await ctx.db
       .query("commentThreads")
-      .withIndex("by_id", (q) => q.eq("id", threadId))
+      .withIndex("by_public_id", (q) => q.eq("id", threadId))
       .first();
     if (!thread) throw new Error("Thread not found");
     // Ensure the thread belongs to the provided doc and block
@@ -201,7 +201,7 @@ export const resolveThread = mutation({
     if (userId === null) throw new Error("Unauthenticated");
     const thread = await ctx.db
       .query("commentThreads")
-      .withIndex("by_id", q => q.eq("id", threadId))
+      .withIndex("by_public_id", q => q.eq("id", threadId))
       .first();
     if (!thread) throw new Error("Thread not found");
     if (thread.creatorId && thread.creatorId !== userId) throw new Error("Forbidden");
