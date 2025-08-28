@@ -51,3 +51,8 @@ body {
   --wu-muted: #9ca3af;
   --wu-label: #9ca3af;
 }
+
+/* Hide cursor labels when data attribute is set */
+[data-cursor-labels="off"] .bn-remote-cursor .bn-remote-cursor-label {
+  display: none !important;
+}

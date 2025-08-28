@@ -4,15 +4,15 @@ import type { ReactElement } from "react";
 interface PageOptionsModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	showRemoteCursors: boolean;
-	onToggleRemoteCursors: (val: boolean) => void;
+	showCursorLabels?: boolean;
+	onToggleCursorLabels?: (val: boolean) => void;
 	pageWidth?: "default" | "full";
 	onChangePageWidth?: (val: "default" | "full") => void;
 	theme?: "light" | "dark";
 	onChangeTheme?: (val: "light" | "dark") => void;
 }
 
-export function PageOptionsModal({ isOpen, onClose, showRemoteCursors, onToggleRemoteCursors, pageWidth = "default", onChangePageWidth, theme = "light", onChangeTheme }: PageOptionsModalProps): ReactElement | null {
+export function PageOptionsModal({ isOpen, onClose, showCursorLabels = true, onToggleCursorLabels, pageWidth = "default", onChangePageWidth, theme = "light", onChangeTheme }: PageOptionsModalProps): ReactElement | null {
 	if (!isOpen) return null;
 	const isDark = theme === "dark";
 	const surface = ["mt-16 w-full max-w-md rounded-xl border p-4 shadow-sm", isDark ? "bg-neutral-900 text-neutral-100 border-neutral-700" : "bg-white"].join(" ");
@@ -28,18 +28,19 @@ export function PageOptionsModal({ isOpen, onClose, showRemoteCursors, onToggleR
 					<button className={closeBtn} onClick={onClose}>Close</button>
 				</div>
 				<div className="mt-3 border-t pt-3">
+
 					<div className="flex items-center justify-between py-2">
 						<div>
-							<div className="text-sm font-medium">Show collaborator cursors</div>
-							<div className={isDark ? "text-xs text-neutral-400" : "text-xs text-neutral-500"}>Only affects visual cursors; collaboration continues.</div>
+							<div className="text-sm font-medium">Show cursor labels</div>
+							<div className={isDark ? "text-xs text-neutral-400" : "text-xs text-neutral-500"}>Toggle collaborator name tags above carets.</div>
 						</div>
 						<button
 							role="switch"
-							aria-checked={showRemoteCursors}
-							onClick={() => onToggleRemoteCursors(!showRemoteCursors)}
-							className={switchTrack(showRemoteCursors)}
+							aria-checked={!!showCursorLabels}
+							onClick={() => onToggleCursorLabels?.(!showCursorLabels)}
+							className={switchTrack(!!showCursorLabels)}
 						>
-							<span className={switchThumb(showRemoteCursors)} />
+							<span className={switchThumb(!!showCursorLabels)} />
 						</button>
 					</div>
 					<div className="flex items-center justify-between py-2">

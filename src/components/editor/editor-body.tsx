@@ -16,7 +16,8 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	const [showOpenButton, setShowOpenButton] = useState<boolean>(false);
 	const [commentsOpen, setCommentsOpen] = useState<boolean>(false);
 	const [optionsOpen, setOptionsOpen] = useState<boolean>(false);
-	const [showRemoteCursors, setShowRemoteCursors] = useState<boolean>(true);
+	// Remote cursors are always enabled; we only toggle labels
+	const [showCursorLabels, setShowCursorLabels] = useState<boolean>(true);
 	const [pageWidth, setPageWidth] = useState<"default" | "full">("default");
 	const [theme, setTheme] = useState<"light" | "dark">("light");
 
@@ -152,7 +153,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 									}} />
 									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
 								</div>
-								<BlockNoteEditor docId={pageDocId} showRemoteCursors={showRemoteCursors && !props.readOnly} editable={!props.readOnly} theme={theme} onEditorReady={(e: any) => { 
+								<BlockNoteEditor docId={pageDocId} showCursorLabels={showCursorLabels} editable={!props.readOnly} theme={theme} onEditorReady={(e: any) => { 
 									editorRef.current = e; 
 									setEditorInstance(e);
 								}} />
@@ -220,8 +221,8 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 			<PageOptionsModal
 				isOpen={optionsOpen}
 				onClose={() => setOptionsOpen(false)}
-				showRemoteCursors={showRemoteCursors}
-				onToggleRemoteCursors={setShowRemoteCursors}
+				showCursorLabels={showCursorLabels}
+				onToggleCursorLabels={setShowCursorLabels}
 				pageWidth={pageWidth}
 				onChangePageWidth={setPageWidth}
 				theme={theme}

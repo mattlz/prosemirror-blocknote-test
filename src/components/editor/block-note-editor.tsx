@@ -19,12 +19,12 @@ const INITIAL_DOCUMENT: { type: string; content: unknown[] } = { type: "doc", co
 interface BlockNoteEditorProps {
 	docId: string;
 	onEditorReady?: (editor: CustomBlockNoteEditor) => void;
-	showRemoteCursors?: boolean;
+	showCursorLabels?: boolean;
 	editable?: boolean;
 	theme?: "light" | "dark";
 }
 
-export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCursors = true, editable = true, theme = "light" }: BlockNoteEditorProps): ReactElement {
+export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabels = true, editable = true, theme = "light" }: BlockNoteEditorProps): ReactElement {
 	const presence = useQuery(api.presence.list, { docId }) ?? [];
 	const me = useQuery(api.comments.me, {});
 	const userId = (me as any)?.userId ?? null;
@@ -92,10 +92,6 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			resolveThreadRef.current({ threadId, resolved }) as any,
 	}), [docId]); // Only depend on docId, refs always point to latest mutations
 
-	// Add ref for showRemoteCursors to prevent editor recreation when toggled
-	const showRemoteCursorsRef = useRef(showRemoteCursors);
-	useEffect(() => { showRemoteCursorsRef.current = showRemoteCursors; }, [showRemoteCursors]);
-
 	const tiptapSync = useTiptapSync(api.example, docId, { snapshotDebounceMs: 1000 });
 
 	// Expose a manual save that mirrors autosave by submitting a snapshot immediately
@@ -137,10 +133,9 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			},
 			_extensions: {
 				remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => {
-					if (!showRemoteCursorsRef.current) return [] as any[]; // Use ref instead of prop
 					const filtered = (presenceRef.current as any[]).filter(p => p.userId !== userIdRef.current);
-					return filtered;
-				}) }),
+					return filtered as any;
+				}, { showLabels: true }) }),
 			},
 			initialContent: blocks.length > 0 ? blocks : undefined,
 		});
@@ -303,7 +298,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	}, [threadsForDoc, threadStore, editorInst]);
 
 	return (
-		<div className="mt-4" data-editor-theme={theme}>
+		<div className="mt-4" data-editor-theme={theme} data-cursor-labels={showCursorLabels ? "on" : "off"}>
 			{isLoading ? (
 				<p style={{ padding: 16 }}>Loading…</p>
 			) : editorInst ? (
