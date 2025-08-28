@@ -5,6 +5,7 @@ import { SuggestionMenuController } from "@blocknote/react";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
 import { BlockNoteEditor, nodeToBlock, filterSuggestionItems } from "@blocknote/core";
+import type { JSONContent } from "@tiptap/core";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexThreadStore } from "@/app/comments/convex-thread-store";
@@ -14,7 +15,7 @@ import { createRemoteCursorPlugin } from "@/components/editor";
 import { customSchema, type CustomBlockNoteEditor } from "./custom-blocks/custom-schema";
 import { getCustomSlashMenuItems } from "./custom-blocks/slash-menu-items";
 
-const INITIAL_DOCUMENT: { type: string; content: unknown[] } = { type: "doc", content: [] };
+const INITIAL_DOCUMENT: JSONContent = { type: "doc", content: [] };
 
 interface BlockNoteEditorProps {
 	docId: string;
