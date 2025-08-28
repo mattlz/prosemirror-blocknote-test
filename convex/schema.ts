@@ -20,7 +20,21 @@ export default defineSchema({
 		archivedAt: v.optional(v.number()),
 		shareId: v.optional(v.string()),
 		publishedAt: v.optional(v.number()),
-	}).index("by_owner", ["ownerId"]).index("by_created", ["createdAt"]).index("by_shareId", ["shareId"]),
+        // NEW template references
+        templateId: v.optional(v.id("documentTemplates")),
+        templateKey: v.optional(v.string()),
+	}).index("by_owner", ["ownerId"]).index("by_created", ["createdAt"]).index("by_shareId", ["shareId"]).index("by_template", ["templateKey"]),
+
+	// Document templates
+	documentTemplates: defineTable({
+		key: v.string(), // e.g. "blank"
+		name: v.string(), // e.g. "Blank"
+		description: v.optional(v.string()),
+		structure: v.optional(v.any()), // reserved for future template page tree
+		initialSnapshot: v.optional(v.string()), // JSON string of PM doc
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	}).index("by_key", ["key"]),
 
 	// Table for document page hierarchy (replaces legacy `pages`)
 	documentPages: defineTable({

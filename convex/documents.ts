@@ -17,18 +17,49 @@ export const list = query({
 });
 
 export const create = mutation({
-    args: { title: v.string() },
-    handler: async (ctx, { title }) => {
+    args: { title: v.string(), templateKey: v.optional(v.string()) },
+    handler: async (ctx, { title, templateKey }) => {
         console.log("🆕 CREATING DOCUMENT:", {
             title,
             timestamp: new Date().toISOString()
         });
-        
+        // Resolve template (default to "blank").
+        // If a custom key is provided but not found, fall back to "blank".
+        let chosenKey = templateKey ?? "blank";
         const now = Date.now();
+        let template = await ctx.db
+            .query("documentTemplates")
+            .withIndex("by_key", q => q.eq("key", chosenKey))
+            .first();
+
+        if (!template && chosenKey !== "blank") {
+            // Fall back to the default blank template key
+            chosenKey = "blank";
+            template = await ctx.db
+                .query("documentTemplates")
+                .withIndex("by_key", q => q.eq("key", chosenKey))
+                .first();
+        }
+
+        if (!template && chosenKey === "blank") {
+            const templateId = await ctx.db.insert("documentTemplates", {
+                key: "blank",
+                name: "Blank",
+                description: "A blank document with a single page.",
+                structure: undefined,
+                initialSnapshot: undefined,
+                createdAt: now,
+                updatedAt: now,
+            } as any);
+            template = await ctx.db.get(templateId);
+        }
+
         const id = await ctx.db.insert("documents", {
             title,
             createdAt: now,
-        });
+            templateId: (template as any)?._id,
+            templateKey: (template as any)?.key ?? chosenKey,
+        } as any);
         
         console.log("✅ DOCUMENT CREATED:", {
             documentId: id,
@@ -55,7 +86,16 @@ export const create = mutation({
 
         // Create a ProseMirror document for this page
         const docId = randomId();
-        await prosemirrorSync.create(ctx, docId, { type: "doc", content: [] });
+        let initialSnapshot: any = { type: "doc", content: [] };
+        if ((template as any)?.initialSnapshot) {
+            try {
+                initialSnapshot = JSON.parse((template as any).initialSnapshot);
+            } catch {
+                // Fallback to empty snapshot on parse errors
+                initialSnapshot = { type: "doc", content: [] };
+            }
+        }
+        await prosemirrorSync.create(ctx, docId, initialSnapshot);
         
         console.log("✅ PROSEMIRROR DOC CREATED:", {
             docId,
@@ -137,4 +177,3 @@ export const createWeeklyUpdate = mutation({
         return id;
     },
 });
-

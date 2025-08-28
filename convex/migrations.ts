@@ -66,3 +66,43 @@ export const backfillCommentTargets = mutation({
 });
 
 // pages -> documentPages migration has been completed; legacy handler removed.
+
+export const backfillDocumentTemplates = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    // Ensure default template exists
+    let blank = await ctx.db
+      .query("documentTemplates")
+      .withIndex("by_key", q => q.eq("key", "blank"))
+      .first();
+    if (!blank) {
+      const blankId = await ctx.db.insert("documentTemplates", {
+        key: "blank",
+        name: "Blank",
+        description: "A blank document with a single page.",
+        structure: undefined,
+        initialSnapshot: undefined,
+        createdAt: now,
+        updatedAt: now,
+      } as any);
+      blank = await ctx.db.get(blankId);
+    }
+
+    // Backfill documents
+    const docs = await ctx.db.query("documents").collect();
+    let patched = 0;
+    for (const d of docs) {
+      const needsKey = (d as any).templateKey === undefined || (d as any).templateKey === null;
+      const needsId = (d as any).templateId === undefined || (d as any).templateId === null;
+      if (needsKey || needsId) {
+        await ctx.db.patch(d._id, {
+          templateKey: (d as any).templateKey ?? "blank",
+          templateId: (d as any).templateId ?? (blank as any)._id,
+        });
+        patched++;
+      }
+    }
+    return { patched };
+  },
+});
