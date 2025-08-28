@@ -37,14 +37,20 @@ export const create = mutation({
         });
 
         // Create a default page for this document
-        const pageId = await ctx.db.insert("pages", {
+        // Prefer new table if already populated for this document; otherwise fallback to legacy during transition
+        const hasNew = await ctx.db
+            .query("documentPages")
+            .withIndex("by_document", q => q.eq("documentId", id))
+            .first();
+        const target = hasNew ? "documentPages" : "pages";
+        const pageId = await ctx.db.insert(target as any, {
             title,
             documentId: id,
             order: 0,
             parentPageId: undefined,
             docId: "", // Will be updated after ProseMirror doc creation
             createdAt: now,
-        });
+        } as any);
         
         console.log("✅ DEFAULT PAGE CREATED:", {
             pageId,
