@@ -56,3 +56,75 @@ body {
 [data-cursor-labels="off"] .bn-remote-cursor .bn-remote-cursor-label {
   display: none !important;
 }
+
+/* Inline comment composer styling (non-invasive, selector-based) */
+/* Target BlockNote's classes directly for reliability */
+[data-editor-theme] .bn-thread {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb; /* neutral-200 */
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+[data-editor-theme="dark"] .bn-thread {
+  background-color: #0a0a0a;
+  border-color: #262626;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+[data-editor-theme]  .bn-thread .bn-comment-editor {
+  padding: 10px 12px;
+  border-radius: 8px; /* ensure inner corners are smooth */
+}
+
+[data-editor-theme] .bn-thread .bn-comment-editor:focus-within {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+
+.bn-thread .bn-comment-actions-wrapper {
+  padding: 0 10px 10px 0;
+}
+.bn-thread .bn-comment-actions-wrapper .bn-comment-actions{
+  padding: 0 !important;
+}
+.bn-thread .bn-comment-actions-wrapper .bn-comment-actions button{
+  padding: 10px 15px !important;
+  border: 0 !important;
+  background-color: #2563EB !important;
+  color: #fff !important;
+}
+/* Style contenteditable-based composer (if used instead of textarea) */
+[data-editor-theme] .bn-editor [contenteditable="true"][data-placeholder="Write a comment..."] {
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+[data-editor-theme="dark"] .bn-editor [contenteditable="true"][data-placeholder="Write a comment..."] {
+  background-color: #0a0a0a;
+  color: #e5e5e5;
+  border-color: #262626;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+[data-editor-theme] .bn-editor [contenteditable="true"][data-placeholder="Write a comment..."]:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+}
+
+/* Tweak composer Save button when adjacent to the input (best-effort heuristic) */
+[data-editor-theme] .bn-editor div:has(> textarea[placeholder="Write a comment..."]) > button,
+[data-editor-theme] .bn-editor div:has(> [contenteditable="true"][data-placeholder="Write a comment..."]) > button {
+  background-color: #3b82f6; /* blue-500 */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+[data-editor-theme] .bn-editor div:has(> textarea[placeholder="Write a comment..."]) > button:hover,
+[data-editor-theme] .bn-editor div:has(> [contenteditable="true"][data-placeholder="Write a comment..."]) > button:hover {
+  background-color: #2563eb; /* blue-600 */
+}
