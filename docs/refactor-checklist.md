@@ -58,14 +58,12 @@ Phase E — Editor Decomposition & Hooks
   - `useEditorDoc(docId)` — PM/Convex sync lifecycle surface
   - `useEditorPresence(docId)` — presence cursors/avatars surface
   - (Optional) `useEditorComments(docId)` — read-only summaries
-- [~] Decompose editor components — temp skeletons in `src/temp/refactor/components/editor/*`
-  - Added: `EditorToolbar`, `EditorCanvas`, `EditorSidebar`
-  - Wired: `EditorToolbar` replaces inline `<TopBar />` without changing markup (returns `TopBar` directly)
-  - Pending: Wire `EditorCanvas` and `EditorSidebar` after reviewing middle layout to avoid DOM changes
+- [x] Decompose editor components — temp skeletons in `src/temp/refactor/components/editor/*`
+  - Added + wired: `EditorToolbar`, `EditorCanvas`, `EditorSidebar` while preserving markup/classes
 - [x] Refactor `components/editor/*` to use hooks and split components (UI unchanged)
 - Notes:
   - `EditorBody` now uses `useEditorDoc` and `useEditorPresence` for lifecycle + presence state; `onEditorReady` uses hook callback. Save status logic unchanged.
-  - `EditorToolbar` is a thin wrapper over `TopBar`, preserving exact rendered output.
+  - `EditorToolbar` renders `TopBar` to guarantee identical DOM. `EditorCanvas` and `EditorSidebar` render the same subtree structure as before.
 
 Phase F — Types & Exports
 - [ ] Remove `any` in UI and hooks; use Convex generated types and `src/types/*`
@@ -87,3 +85,4 @@ Change Log (agent updates as work proceeds)
 - (refactor) Phase B: Implemented `useDocuments`, `useDocumentActions`, `useDocumentFilter`; refactored `src/app/(dashboard)/docs/page.tsx` to consume hooks; removed `any`. Files: `src/hooks/data/*`, `src/hooks/index.ts`, `src/app/(dashboard)/docs/page.tsx`.
 - (refactor) Phase C: Verified `use-pages` typing/shape aligns with standards; no consumer changes.
 - (refactor) Phase D: Implemented `useCommentThreads`, `useCommentThread`, and action hooks; refactored `comments` UI to use hooks without UI changes. Files: `src/hooks/features/use-comment-threads.ts`, `src/app/comments/comments-sidebar.tsx`, `src/app/comments/comment-thread.tsx`, `src/components/features/index.ts`.
+- (refactor) Phase E: Added `useEditorDoc` and `useEditorPresence`; introduced `EditorToolbar`, `EditorCanvas`, `EditorSidebar`; refactored `EditorBody` to use hooks and components while preserving markup. Files: `src/hooks/editor/*`, `src/components/editor/editor-*.tsx`, `src/components/editor/index.ts`, `src/components/editor/editor-body.tsx`.

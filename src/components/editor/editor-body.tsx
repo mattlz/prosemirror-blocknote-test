@@ -8,6 +8,8 @@ import { PageSidebar, IconPicker } from "@/components/sidebar";
 import { SidebarOpenButton } from "@/components/layout";
 import { PageOptionsModal } from "@/components/modals/page-options-modal";
 import { EditorToolbar } from "@/components/editor/editor-toolbar";
+import { EditorSidebar } from "@/components/editor/editor-sidebar";
+import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { useEditorDoc } from "@/hooks/editor/use-editor-doc";
 import { useEditorPresence } from "@/hooks/editor/use-editor-presence";
 
@@ -78,22 +80,18 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 			/>
 
 			<div className="flex flex-1 relative overflow-hidden min-h-0">
-				<div className={`transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-64' : 'w-0'} overflow-hidden`}>
-					<div className={`h-full transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-						<div className="h-full relative">
-							<PageSidebar documentId={documentId} activePageDocId={pageDocId} onSelect={(id) => setPageDocId(id)} onCreatePage={onCreatePage} onCollapse={() => setSidebarOpen(false)} theme={theme} />
-							<div className="absolute left-2 right-2 bottom-2 text-[11px] text-neutral-500">
-								{saveErrorAt ? (
-									<div className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-red-700">Save failed. Retrying…</div>
-								) : (
-									<div className="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1">
-										{lastSavedAt ? `Last saved ${formatRelative(lastSavedAt)}` : "Waiting for first save…"}
-									</div>
-								)}
-							</div>
-						</div>
-					</div>
-				</div>
+				<EditorSidebar 
+					sidebarOpen={sidebarOpen}
+					documentId={documentId}
+					pageDocId={pageDocId}
+					onSelect={(id) => setPageDocId(id)}
+					onCreatePage={onCreatePage}
+					onCollapse={() => setSidebarOpen(false)}
+					theme={theme}
+					lastSavedAt={lastSavedAt}
+					saveErrorAt={saveErrorAt}
+					formatRelative={formatRelative}
+				/>
 				{showOpenButton && (
 					<SidebarOpenButton onOpen={() => setSidebarOpen(true)} />
 				)}
@@ -101,19 +99,21 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 					{!pageDocId ? (
 						<div className="h-full overflow-auto p-6 text-neutral-600">{documentId ? "Select or create a page" : "No document selected"}</div>
 					) : (
-						<div className={`h-full overflow-auto p-6 ${theme === "dark" ? "bg-neutral-900 text-neutral-100" : "bg-white text-neutral-900"}`}>
-							<div className={pageWidth === "full" ? "w-full max-w-none" : "mx-auto w-full max-w-[1000px]"}>
-								<div className="mt-4 mb-4 flex items-center gap-3">
-									<IconPicker theme={theme} value={(pages as any[]).find((p) => p.docId === pageDocId)?.icon ?? null} onChange={(val) => {
-										const page = (pages as any[]).find((p) => p.docId === pageDocId);
-										if (!page) return;
-										setIconMutation({ pageId: page._id, icon: val ?? undefined }).catch(() => {});
-									}} />
-									<h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
-								</div>
-								<BlockNoteEditor docId={pageDocId} showCursorLabels={showCursorLabels} editable={!props.readOnly} theme={theme} onEditorReady={handleEditorReady} />
-							</div>
-						</div>
+						<EditorCanvas
+							theme={theme}
+							pageWidth={pageWidth}
+							currentPageTitle={currentPageTitle}
+							pageDocId={pageDocId}
+							showCursorLabels={showCursorLabels}
+							editable={!props.readOnly}
+							iconValue={(pages as any[]).find((p) => p.docId === pageDocId)?.icon ?? null}
+							onIconChange={(val) => {
+								const page = (pages as any[]).find((p) => p.docId === pageDocId);
+								if (!page) return;
+								setIconMutation({ pageId: page._id, icon: val ?? undefined }).catch(() => {});
+							}}
+							onEditorReady={handleEditorReady}
+						/>
 					)}
 				</div>
 				{commentsOpen ? (
