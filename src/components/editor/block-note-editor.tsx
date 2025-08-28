@@ -92,11 +92,11 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 			resolveThreadRef.current({ threadId, resolved }) as any,
 	}), [docId]); // Only depend on docId, refs always point to latest mutations
 
-	const tiptapSync = useTiptapSync(api.example, docId, { snapshotDebounceMs: 1000 });
+	const tiptapSync = useTiptapSync(api.documentSyncApi, docId, { snapshotDebounceMs: 1000 });
 
 	// Expose a manual save that mirrors autosave by submitting a snapshot immediately
-	const latestVersion = useQuery(api.example.latestVersion, { id: docId }) as number | null;
-	const submitSnapshot = useMutation(api.example.submitSnapshot);
+	const latestVersion = useQuery(api.documentSyncApi.latestVersion, { id: docId }) as number | null;
+	const submitSnapshot = useMutation(api.documentSyncApi.submitSnapshot);
 
 	const editorFromSync = useMemo(() => {
 		if (tiptapSync.initialContent === null) return null;
