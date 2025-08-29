@@ -21,9 +21,10 @@ export function SignUpForm({ onSuccess }: SignUpFormProps): ReactElement {
     try {
       await signIn("password", { flow: "signUp", name, email, password });
       onSuccess?.();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Sign up error:", e);
-      setError(e?.message ?? "Failed to create account. Please try again.");
+      const msg = e instanceof Error ? e.message : "Failed to create account. Please try again.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -87,4 +88,3 @@ export function SignUpForm({ onSuccess }: SignUpFormProps): ReactElement {
     </form>
   );
 }
-

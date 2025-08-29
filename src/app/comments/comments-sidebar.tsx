@@ -64,10 +64,10 @@ export default function CommentsSidebar(props: { docId: string; readOnly?: boole
                 thread={thread}
                 first={first}
                 replies={replies}
-                canEdit={(id: string) => !readOnly && me?.userId && id === me.userId}
+                canEdit={(id: string) => Boolean(!readOnly && me?.userId && id === me.userId)}
                 onJumpToBlock={onJumpToBlock}
-                canResolve={!readOnly && me?.userId && me.userId === thread.creatorId}
-                onResolve={(resolved: boolean) => { if (readOnly) return; resolveThread({ threadId: thread.id, resolved }).catch(() => {}); }}
+                canResolve={Boolean(!readOnly && me?.userId && me.userId === thread.creatorId)}
+                onResolve={(resolved: boolean) => { if (readOnly) return; resolveThread({ threadId: thread.id as string, resolved }).catch(() => {}); }}
                 onDeleteComment={(commentId: string) => { if (readOnly) return; deleteComment({ commentId: commentId as unknown as Id<"comments"> }).catch(() => {}); }}
                 onReply={async (content: string) => {
                   if (readOnly) return;
@@ -95,7 +95,7 @@ function ThreadCard({
   replies,
   canEdit,
   canResolve,
-  _onJumpToBlock,
+  onJumpToBlock,
   onResolve,
   onDeleteComment,
   onReply,
@@ -116,7 +116,7 @@ function ThreadCard({
   resolveUsername: (id: string) => string;
   theme?: "light" | "dark";
 }): ReactElement {
-  void _onJumpToBlock; // mark as used to satisfy lint; prop is reserved for future use
+  void onJumpToBlock; // mark as used to satisfy lint; prop is reserved for future use
   const [expanded, setExpanded] = useState<boolean>(false);
   const [showReply, setShowReply] = useState<boolean>(false);
   const [reply, setReply] = useState<string>("");

@@ -2,9 +2,9 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
+import type { Id } from "@/convex/_generated/dataModel";
+import { usePages } from "@/hooks";
 import CommentsSidebar from "@/app/comments/comments-sidebar";
-import { BlockNoteEditor } from "@/components/editor";
-import { PageSidebar, IconPicker } from "@/components/sidebar";
 import { SidebarOpenButton } from "@/components/layout";
 import { PageOptionsModal } from "@/components/modals/page-options-modal";
 import { EditorToolbar } from "@/components/editor/editor-toolbar";
@@ -13,7 +13,7 @@ import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { useEditorDoc } from "@/hooks/editor/use-editor-doc";
 import { useEditorPresence } from "@/hooks/editor/use-editor-presence";
 
-export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null; readOnly?: boolean }): ReactElement {
+export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null; readOnly?: boolean; hideControls?: { back?: boolean; insert?: boolean; comments?: boolean; options?: boolean; presence?: boolean; share?: boolean } }): ReactElement {
 	const [documentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);
 	const [pageDocId, setPageDocId] = useState<string | null>(null);
 	
@@ -34,21 +34,20 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	const onCreatePage = async (): Promise<void> => {
 		if (!documentId) return;
 		const title = prompt("New page title", "Untitled") || "Untitled";
-		const { docId } = await createPage({ documentId: documentId as any, title });
+		const { docId } = await createPage({ documentId: documentId as unknown as Id<"documents">, title });
 		setPageDocId(docId);
 	};
 
-	const pages = useQuery(documentId ? api.pages.list : (api.documents.list as any), documentId ? ({ documentId: documentId as any } as any) : ({} as any)) ?? [];
-	const documents = useQuery(api.documents.list, {}) ?? [];
+	const { pages } = usePages(documentId as unknown as Id<"documents"> | null);
+	const documentsRaw = useQuery(api.documents.list, {}) as Array<{ _id: string; title: string }> | undefined;
 	
-	const documentTitle = useMemo(() => (documents as any[]).find((d) => d._id === documentId)?.title ?? "All docs", [documents, documentId]);
-	const currentPageTitle = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId)?.title ?? "Untitled", [pages, pageDocId]);
+	const documentTitle = useMemo(() => (documentsRaw ?? []).find((d) => d._id === documentId)?.title ?? "All docs", [documentsRaw, documentId]);
+	const currentPageTitle = useMemo(() => pages.find((p) => p.docId === pageDocId)?.title ?? "Untitled", [pages, pageDocId]);
 
 	useEffect(() => {
 		if (!documentId) return;
-		if (!Array.isArray(pages)) return;
 		if (pageDocId) return;
-		const topLevel = (pages as any[]).filter((p) => !(p as any).parentPageId);
+		const topLevel = pages.filter((p) => !p.parentPageId);
 		const first = topLevel.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
 		if (first?.docId) setPageDocId(first.docId);
 	}, [documentId, pageDocId, pages]);
@@ -75,7 +74,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 				commentsOpen={commentsOpen}
 				optionsOpen={optionsOpen}
 				onToggleOptions={() => setOptionsOpen((v) => !v)}
-				editor={props.readOnly ? null : editorInstance}
+					editor={props.readOnly ? null : (editorInstance as unknown as { manualSave?: () => Promise<void> })}
 				theme={theme}
 			/>
 
@@ -106,9 +105,9 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 							pageDocId={pageDocId}
 							showCursorLabels={showCursorLabels}
 							editable={!props.readOnly}
-							iconValue={(pages as any[]).find((p) => p.docId === pageDocId)?.icon ?? null}
+								iconValue={pages.find((p) => p.docId === pageDocId)?.icon ?? null}
 							onIconChange={(val) => {
-								const page = (pages as any[]).find((p) => p.docId === pageDocId);
+									const page = pages.find((p) => p.docId === pageDocId);
 								if (!page) return;
 								setIconMutation({ pageId: page._id, icon: val ?? undefined }).catch(() => {});
 							}}
@@ -154,18 +153,24 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 							if (!editorRef.current || !pageDocId) return;
 
 							let selectedId: string = "page";
-							try {
-								const getBlocks = (editorRef.current as any)?.getSelectedBlocks ?? (editorRef.current as any)?.blocksForSelection;
-								const blocks = getBlocks?.call(editorRef.current) ?? [];
-								if (Array.isArray(blocks) && blocks.length > 0 && (blocks[0] as any)?.id) {
-									selectedId = (blocks[0] as any).id;
-								} else {
-									const allBlocks = (editorRef.current as any)?.document ?? [];
-									if (Array.isArray(allBlocks) && allBlocks.length > 0 && (allBlocks[0] as any)?.id) {
-										selectedId = (allBlocks[0] as any).id;
+								try {
+									type BNEditorLike = {
+										getSelectedBlocks?: () => Array<{ id?: string }>;
+										blocksForSelection?: () => Array<{ id?: string }>;
+										document?: Array<{ id?: string }>;
+									};
+									const ed = editorRef.current as BNEditorLike | null;
+									const getBlocks = ed?.getSelectedBlocks ?? ed?.blocksForSelection;
+									const blocks = getBlocks?.() ?? [];
+									if (Array.isArray(blocks) && blocks.length > 0 && blocks[0]?.id) {
+										selectedId = blocks[0]?.id ?? "page";
+									} else {
+										const allBlocks = ed?.document ?? [];
+										if (Array.isArray(allBlocks) && allBlocks.length > 0 && allBlocks[0]?.id) {
+											selectedId = allBlocks[0]?.id ?? "page";
+										}
 									}
-								}
-							} catch {}
+								} catch {}
 
 							await createThreadMutation({ docId: pageDocId, blockId: selectedId, content }).catch(() => {});
 						}}
@@ -187,8 +192,8 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	);
 }
 
-export default function Editor(props: { documentId?: string | null; readOnly?: boolean }): ReactElement {
+export default function Editor(props: { documentId?: string | null; readOnly?: boolean; hideControls?: { back?: boolean; insert?: boolean; comments?: boolean; options?: boolean; presence?: boolean; share?: boolean } }): ReactElement {
 	return (
-		<EditorBody initialDocumentId={props.documentId ?? null} readOnly={props.readOnly} />
+		<EditorBody initialDocumentId={props.documentId ?? null} readOnly={props.readOnly} hideControls={props.hideControls} />
 	);
 }

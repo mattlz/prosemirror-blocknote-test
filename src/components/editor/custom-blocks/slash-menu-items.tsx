@@ -6,7 +6,6 @@ import {
 import { insertOrUpdateBlock, BlockNoteEditor } from "@blocknote/core";
 import { Info, Table, FileText, Calendar } from "lucide-react";
 import { customSchema } from "./custom-schema";
-import type { ReactElement } from "react";
 
 // Get all custom slash menu items including defaults
 export const getCustomSlashMenuItems = (
@@ -41,7 +40,6 @@ export const getCustomSlashMenuItems = (
       insertOrUpdateBlock(editor, {
         type: "datatable",
         props: { table: "documents" },
-        content: [],
       });
     },
     aliases: ["datatable", "table", "documents"],
@@ -57,7 +55,6 @@ export const getCustomSlashMenuItems = (
       insertOrUpdateBlock(editor, {
         type: "metadata",
         props: { documentId: "" },
-        content: [],
       });
     },
     aliases: ["metadata", "meta", "document info"],
@@ -70,10 +67,11 @@ export const getCustomSlashMenuItems = (
   {
     title: "Weekly Update",
     onItemClick: () => {
+      type EditorWithComments = { options?: { comments?: { threadStore?: { docId?: string } } } };
+      const docId = ((editor as unknown as EditorWithComments).options?.comments?.threadStore?.docId) ?? "";
       insertOrUpdateBlock(editor, {
         type: "weeklyupdate",
-        props: { docId: ((editor as any)?.options as any)?.comments?.threadStore?.docId ?? "" },
-        content: [],
+        props: { docId },
       });
     },
     aliases: ["weekly", "status", "update"],

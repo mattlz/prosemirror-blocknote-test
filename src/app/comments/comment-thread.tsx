@@ -1,5 +1,6 @@
 "use client";
 import { useState, type ReactElement } from "react";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useCommentThread, useCommentActions } from "@/hooks/features/use-comment-threads";
 
 export function CommentThread({ threadId, onJumpToBlock }: { threadId: string; onJumpToBlock?: (blockId: string) => void }): ReactElement {
@@ -35,16 +36,16 @@ export function CommentThread({ threadId, onJumpToBlock }: { threadId: string; o
                     <div className="text-xs text-neutral-500">{new Date(c.createdAt).toLocaleString()}</div>
                     <div>{c.content}</div>
                   </div>
-                  <button className="text-xs text-red-600 hover:underline" onClick={() => deleteComment({ commentId: c._id }).catch(() => {})}>Delete</button>
+                  <button className="text-xs text-red-600 hover:underline" onClick={() => deleteComment({ commentId: c._id as Id<"comments"> }).catch(() => {})}>Delete</button>
                 </div>
               ))}
             </div>
           ) : null}
           <div className="mt-2 flex gap-2">
             {!thread.resolved ? (
-              <button className="text-xs rounded border px-2 py-1" onClick={() => resolveThread({ threadId: thread.id, resolved: true }).catch(() => {})}>Resolve</button>
+              <button className="text-xs rounded border px-2 py-1" onClick={() => resolveThread({ threadId: thread.id as string, resolved: true }).catch(() => {})}>Resolve</button>
             ) : (
-              <button className="text-xs rounded border px-2 py-1" onClick={() => resolveThread({ threadId: thread.id, resolved: false }).catch(() => {})}>Reopen</button>
+              <button className="text-xs rounded border px-2 py-1" onClick={() => resolveThread({ threadId: thread.id as string, resolved: false }).catch(() => {})}>Reopen</button>
             )}
           </div>
         </div>

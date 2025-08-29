@@ -2,6 +2,8 @@
 import { useState, type ReactElement } from "react";
 import { ChevronDown, ChevronRight, PanelLeftClose, Plus } from "lucide-react";
 import { usePages } from "@/hooks";
+import type { Id } from "@/convex/_generated/dataModel";
+import type { Page } from "@/types/pages";
 
 interface PageSidebarProps {
 	documentId: string | null;
@@ -13,7 +15,7 @@ interface PageSidebarProps {
 }
 
 export function PageSidebar(props: PageSidebarProps): ReactElement {
-	const { pages, topLevelPages, childrenByParent, operations } = usePages(props.documentId);
+	const { topLevelPages, childrenByParent, operations } = usePages(props.documentId as unknown as Id<"documents"> | null);
 	const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 	const isDark = props.theme === "dark";
@@ -33,8 +35,8 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 				<button aria-label="Collapse sidebar" className="text-neutral-400 hover:text-neutral-200 transition-colors" onClick={props.onCollapse}><PanelLeftClose className="h-5 w-5" /></button>
 			</div>
 			<div className="flex flex-col gap-1">
-				{topLevelPages.map((p: any, idx: number) => {
-					const children = childrenByParent[String(p._id)] ?? [];
+				{topLevelPages.map((p: Page, idx: number) => {
+					const children: Page[] = childrenByParent[String(p._id)] ?? [];
 					const hasChildren = children.length > 0;
 					const isExpanded = expanded[String(p._id)] ?? false;
 					const siblings = topLevelPages;
@@ -99,7 +101,7 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 
 							{hasChildren && isExpanded ? (
 								<div className="mt-1">
-									{children.map((c: any, cIdx: number) => {
+										{children.map((c: Page, cIdx: number) => {
 										const cSiblings = children;
 										return (
 											<div key={c._id} className={["group relative ml-4 flex items-center gap-2 rounded-md px-2 py-1", props.activePageDocId === c.docId ? activeRow : hoverRow].join(" ")}>

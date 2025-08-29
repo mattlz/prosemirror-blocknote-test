@@ -20,7 +20,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
       currentUser,
       isLoading: currentUser === undefined,
       isAuthenticated: currentUser !== null,
-      authState,
     });
 
     // Clear any existing redirect timeout

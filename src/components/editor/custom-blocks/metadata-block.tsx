@@ -4,25 +4,31 @@ import { defaultProps } from "@blocknote/core";
 import { useMemo, type ReactElement } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Document } from "@/types/documents";
 
 type MetadataProps = {
   documentId?: string;
   textAlignment?: (typeof defaultProps.textAlignment)["default"];
 };
 
-function MetadataBlockComponent(renderProps: any): ReactElement {
+type BlockProps = { documentId?: string; textAlignment?: (typeof defaultProps.textAlignment)["default"] };
+type RenderBlock = { props?: BlockProps };
+type EditorAPI = { updateBlock?: (block: unknown, update: unknown) => void };
+type RenderProps = { block: RenderBlock; editor?: EditorAPI } & Record<string, unknown>;
+
+function MetadataBlockComponent(renderProps: RenderProps): ReactElement {
   const props = (renderProps.block.props as MetadataProps) ?? {};
-  const documents = useQuery(api.documents.list, {}) as any[] | undefined;
+  const documents = useQuery(api.documents.list, {}) as Document[] | undefined;
 
   const selectedId = props.documentId ?? "";
   const selected = useMemo(() => {
-    return (documents ?? []).find((d: any) => String(d._id) === selectedId);
+    return (documents ?? []).find((d) => String(d._id) === selectedId);
   }, [documents, selectedId]);
 
   const handleChange: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
     const nextId = e.target.value;
     try {
-      (renderProps.editor as any)?.updateBlock?.(renderProps.block as any, {
+      renderProps.editor?.updateBlock?.(renderProps.block, {
         type: "metadata",
         props: { documentId: nextId },
       });
@@ -36,7 +42,7 @@ function MetadataBlockComponent(renderProps: any): ReactElement {
         <div contentEditable={false}>
           <select value={selectedId} onChange={handleChange} style={{ border: "1px solid var(--meta-border, #e5e7eb)", borderRadius: 6, padding: "4px 8px", background: "var(--meta-select-bg, white)", color: "var(--meta-select-fg, inherit)" }}>
             <option value="">Select document…</option>
-            {(documents ?? []).map((d: any) => (
+            {(documents ?? []).map((d) => (
               <option key={String(d._id)} value={String(d._id)}>{d.title}</option>
             ))}
           </select>
@@ -72,7 +78,7 @@ export const Metadata = createReactBlockSpec(
   },
   {
     render: (props): ReactElement => {
-      return <MetadataBlockComponent {...props} />;
+      return <MetadataBlockComponent {...(props as unknown as RenderProps)} />;
     },
     toExternalHTML: (props): ReactElement => {
       const id = ((props.block.props as MetadataProps)?.documentId ?? "").toString();
@@ -86,5 +92,3 @@ export const Metadata = createReactBlockSpec(
 );
 
 export type MetadataType = "metadata";
-
-

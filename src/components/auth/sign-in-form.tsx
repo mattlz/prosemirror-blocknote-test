@@ -20,9 +20,10 @@ export function SignInForm({ onSuccess }: SignInFormProps): ReactElement {
     try {
       await signIn("password", { flow: "signIn", email, password });
       onSuccess?.();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Sign in error:", e);
-      setError(e?.message ?? "Failed to sign in. Please check your credentials.");
+      const msg = e instanceof Error ? e.message : "Failed to sign in. Please check your credentials.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -73,4 +74,3 @@ export function SignInForm({ onSuccess }: SignInFormProps): ReactElement {
     </form>
   );
 }
-

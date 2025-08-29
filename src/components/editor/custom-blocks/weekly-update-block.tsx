@@ -11,12 +11,18 @@ type WeeklyUpdateProps = {
   textAlignment?: (typeof defaultProps.textAlignment)["default"];
 };
 
-function WeeklyUpdateBlockComponent(renderProps: any): ReactElement {
+type BlockProps = { docId?: string; textAlignment?: (typeof defaultProps.textAlignment)["default"] };
+type RenderBlock = { props?: BlockProps };
+type RenderProps = { block: RenderBlock } & Record<string, unknown>;
+
+interface WeeklyUpdateRow { _id: string; createdAt: number; authorId?: string; accomplished?: string; focus?: string; blockers?: string }
+
+function WeeklyUpdateBlockComponent(renderProps: RenderProps): ReactElement {
   const props = (renderProps.block.props as WeeklyUpdateProps) ?? {};
   const docId = props.docId ?? "";
 
-  const updates = useQuery(api.documents.listWeeklyUpdates as any, docId ? { docId } : "skip") as any[] | undefined;
-  const createUpdate = useMutation(api.documents.createWeeklyUpdate as any);
+  const updates = useQuery(api.documents.listWeeklyUpdates, docId ? { docId } : "skip") as WeeklyUpdateRow[] | undefined;
+  const createUpdate = useMutation(api.documents.createWeeklyUpdate);
 
   const rows = useMemo(() => updates ?? [], [updates]);
 
@@ -42,7 +48,7 @@ function WeeklyUpdateBlockComponent(renderProps: any): ReactElement {
         <div style={{ color: "var(--wu-muted, #6b7280)" }}>No updates yet. Click Add Update to create the first one.</div>
       ) : (
         <div style={{ display: "grid", rowGap: 10 }}>
-          {rows.map((r) => (
+          {rows.map((r: WeeklyUpdateRow) => (
             <div key={String(r._id)} style={{ border: "1px solid var(--wu-item-border, #f3f4f6)", borderRadius: 6, padding: 10, background: "var(--wu-item-bg, transparent)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <div style={{ fontWeight: 600 }}>{new Date(r.createdAt).toLocaleString()}</div>
@@ -51,7 +57,7 @@ function WeeklyUpdateBlockComponent(renderProps: any): ReactElement {
               <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", rowGap: 6, columnGap: 12 }}>
                 <div style={{ color: "var(--wu-label, #6b7280)", fontWeight: 500 }}>Accomplished this week</div>
                 <div>{r.accomplished || "-"}</div>
-                <div style={{ color: "var(--wu-label, #6b7280)", fontWeight: 500 }}>Next week's focus</div>
+                <div style={{ color: "var(--wu-label, #6b7280)", fontWeight: 500 }}>Next week&apos;s focus</div>
                 <div>{r.focus || "-"}</div>
                 <div style={{ color: "var(--wu-label, #6b7280)", fontWeight: 500 }}>Blockers</div>
                 <div>{r.blockers || "-"}</div>
@@ -75,9 +81,9 @@ export const WeeklyUpdate = createReactBlockSpec(
   },
   {
     render: (props): ReactElement => {
-      return <WeeklyUpdateBlockComponent {...props} />;
+      return <WeeklyUpdateBlockComponent {...(props as unknown as RenderProps)} />;
     },
-    toExternalHTML: (props): ReactElement => {
+    toExternalHTML: (_props): ReactElement => {
       return (
         <div className="weekly-update-block" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
           <strong>Weekly Updates</strong>
@@ -88,5 +94,3 @@ export const WeeklyUpdate = createReactBlockSpec(
 );
 
 export type WeeklyUpdateType = "weeklyupdate";
-
-

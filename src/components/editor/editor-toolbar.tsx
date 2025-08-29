@@ -1,5 +1,6 @@
 "use client";
 import type { ReactElement } from "react";
+import type { CustomBlockNoteEditor } from "@/components/editor/custom-blocks/custom-schema";
 import { TopBar } from "@/components/layout";
 
 interface EditorToolbarProps {
@@ -11,7 +12,7 @@ interface EditorToolbarProps {
   optionsOpen: boolean;
   onToggleComments: () => void;
   onToggleOptions: () => void;
-  editor: unknown | null;
+  editor: { manualSave?: () => Promise<void> } | CustomBlockNoteEditor | null;
   theme: "light" | "dark";
 }
 
@@ -34,4 +35,3 @@ export function EditorToolbar(props: EditorToolbarProps): ReactElement {
 }
 
 export default EditorToolbar;
-

@@ -66,10 +66,15 @@ Phase E — Editor Decomposition & Hooks
   - `EditorToolbar` renders `TopBar` to guarantee identical DOM. `EditorCanvas` and `EditorSidebar` render the same subtree structure as before.
 
 Phase F — Types & Exports
-- [ ] Remove `any` in UI and hooks; use Convex generated types and `src/types/*`
+- [x] Remove `any` in UI and hooks; use Convex generated types and `src/types/*`
 - [x] Ensure hooks return stable, typed references; prefer empty arrays with `isLoading` instead of `undefined`
 - [x] Normalize barrels to export only public surface; prefer named exports
 - Notes:
+  - Auth forms: normalized error types (unknown) without UI changes.
+  - Editor: `editor-body.tsx` now uses `usePages(...)`; removed union query pattern and any casts for pages/documents derivations.
+  - Sidebar: `page-sidebar.tsx` typed with `Page` in maps.
+  - Custom blocks: added minimal local types; removed `any` from render props and Convex data.
+  - Editor shell and toolbar types tightened; presence avatars docId typed.
   - New data hooks return stable references with default empty arrays and loading flags.
   - Added `src/components/modals/index.ts` barrel; existing barrels look clean and focused.
 
@@ -86,3 +91,5 @@ Change Log (agent updates as work proceeds)
 - (refactor) Phase C: Verified `use-pages` typing/shape aligns with standards; no consumer changes.
 - (refactor) Phase D: Implemented `useCommentThreads`, `useCommentThread`, and action hooks; refactored `comments` UI to use hooks without UI changes. Files: `src/hooks/features/use-comment-threads.ts`, `src/app/comments/comments-sidebar.tsx`, `src/app/comments/comment-thread.tsx`, `src/components/features/index.ts`.
 - (refactor) Phase E: Added `useEditorDoc` and `useEditorPresence`; introduced `EditorToolbar`, `EditorCanvas`, `EditorSidebar`; refactored `EditorBody` to use hooks and components while preserving markup. Files: `src/hooks/editor/*`, `src/components/editor/editor-*.tsx`, `src/components/editor/index.ts`, `src/components/editor/editor-body.tsx`.
+- (types) Phase F: Auth forms error normalization; `editor-body.tsx` switched to `usePages` and removed any casts; `page-sidebar.tsx` typed with `Page`; custom blocks typed with small local interfaces; `slash-menu-items` and `block-insert-button` removed anys via narrow types. Files: `src/components/auth/*`, `src/components/editor/editor-body.tsx`, `src/components/sidebar/page-sidebar.tsx`, `src/components/editor/custom-blocks/*`.
+- (cleanup) Warning cleanups: fixed hook deps warnings where safe (memoized raw queries), removed unused params via local suppressions, adjusted presence/avatar and editor props types, and silenced unavoidable exhaustive-deps on intentional memo via inline comment. Build succeeds with only expected temp/skeleton warnings remaining. Files: multiple.

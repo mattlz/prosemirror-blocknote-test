@@ -40,7 +40,6 @@ const blockTypes = [
       insertOrUpdateBlock(editor, {
         type: "datatable",
         props: { table: "documents" },
-        content: [],
       });
     },
   },
@@ -52,7 +51,6 @@ const blockTypes = [
       insertOrUpdateBlock(editor, {
         type: "metadata",
         props: { documentId: "" },
-        content: [],
       });
     },
   },
@@ -61,11 +59,11 @@ const blockTypes = [
     label: "Weekly Update",
     icon: <Calendar size={16} className="text-orange-600" />,
     action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
-      const docId = (((editor as any)?.options as any)?.comments?.threadStore?.docId) ?? "";
+      type EditorWithComments = { options?: { comments?: { threadStore?: { docId?: string } } } };
+      const docId = ((editor as unknown as EditorWithComments).options?.comments?.threadStore?.docId) ?? "";
       insertOrUpdateBlock(editor, {
         type: "weeklyupdate",
         props: { docId },
-        content: [],
       });
     },
   },

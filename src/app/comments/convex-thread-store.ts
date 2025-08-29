@@ -70,23 +70,22 @@ export class ConvexThreadStore extends ThreadStore {
   private readonly deps: ConvexThreadStoreDeps;
 
   constructor(docId: string, deps: ConvexThreadStoreDeps) {
-    super(new DefaultThreadStoreAuth(deps.userId, deps.role ?? "editor"));
+    const mappedRole: "editor" | "comment" = deps.role === "commenter" ? "comment" : (deps.role ?? "editor");
+    super(new DefaultThreadStoreAuth(deps.userId, mappedRole));
     this.docId = docId;
     this.deps = deps;
+  }
+
+  // BlockNote ThreadStore abstract surface: we manage state via setThreadsFromConvex
+  async addThreadToDocument(_options: { threadId: string; selection: { prosemirror: { head: number; anchor: number }; yjs?: { head: unknown; anchor: unknown } } }): Promise<void> {
+    // No-op: server is source of truth; hydration via setThreadsFromConvex
+    return;
   }
 
   // Called from React layer when Convex query updates
   public setThreadsFromConvex(rows: Array<{ thread: ConvexThread; comments: ConvexComment[] }>): void {
     const map = new Map<string, ThreadData>();
     for (const { thread, comments } of rows) {
-      const t: ThreadData = {
-        type: "thread",
-        id: thread.id,
-        createdAt: new Date(thread.createdAt),
-        updatedAt: new Date(thread.createdAt),
-        resolved: !!thread.resolved,
-        metadata: { docId: thread.docId, blockId: thread.blockId },
-      };
       const cs: CommentData[] = comments.map((c) => ({
         type: "comment",
         id: String(c._id),
@@ -97,7 +96,15 @@ export class ConvexThreadStore extends ThreadStore {
         metadata: {},
         body: bodyFromStored(c.content),
       }));
-      t.comments = cs;
+      const t: ThreadData = {
+        type: "thread",
+        id: thread.id as string,
+        createdAt: new Date(thread.createdAt),
+        updatedAt: new Date(thread.createdAt),
+        resolved: !!thread.resolved,
+        metadata: { docId: thread.docId, blockId: thread.blockId },
+        comments: cs,
+      };
       map.set(t.id, t);
     }
     this.threads = map;
@@ -163,6 +170,7 @@ export class ConvexThreadStore extends ThreadStore {
   }
 
   async deleteThread(_options: { threadId: string }): Promise<void> {
+    void _options;
     // Not implemented: deleting a thread entirely; could be added via new Convex endpoint
     return;
   }
@@ -176,11 +184,13 @@ export class ConvexThreadStore extends ThreadStore {
   }
 
   async addReaction(_options: { threadId: string; commentId: string; emoji: string }): Promise<void> {
+    void _options;
     // Reactions not implemented in Convex backend yet
     return;
   }
 
   async deleteReaction(_options: { threadId: string; commentId: string; emoji: string }): Promise<void> {
+    void _options;
     // Reactions not implemented in Convex backend yet
     return;
   }
@@ -204,4 +214,3 @@ export class ConvexThreadStore extends ThreadStore {
     };
   }
 }
-

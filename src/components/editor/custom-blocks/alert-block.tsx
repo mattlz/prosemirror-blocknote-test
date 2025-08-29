@@ -4,6 +4,11 @@ import { createReactBlockSpec } from "@blocknote/react";
 import { AlertCircle, CheckCircle2, Info, XCircle } from "lucide-react";
 import { useEffect, useRef, useState, type ReactElement } from "react";
 
+type BlockProps = { type?: AlertType; textAlignment?: 'left' | 'center' | 'right' | 'justify' };
+type RenderBlock = { props?: BlockProps; id?: string; content: unknown[] };
+type EditorAPI = { updateBlock?: (block: unknown, update: unknown) => void };
+type RenderProps = { block: RenderBlock; editor?: EditorAPI; contentRef?: (el: HTMLElement | null) => void } & Record<string, unknown>;
+
 // Define alert types with their styling
 export const alertTypes = [
   {
@@ -43,8 +48,8 @@ export const alertTypes = [
 export type AlertType = typeof alertTypes[number]["value"];
 
 // Stable React component used by the block's render to avoid remounting on each update
-function AlertBlockComponent(renderProps: any): ReactElement {
-  const blockType = (renderProps.block.props as any)?.type || "info";
+function AlertBlockComponent(renderProps: RenderProps): ReactElement {
+  const blockType = renderProps.block.props?.type ?? "info";
   const alertType = alertTypes.find((a) => a.value === blockType) || alertTypes[3];
   const Icon = alertType.icon;
 
@@ -70,12 +75,12 @@ function AlertBlockComponent(renderProps: any): ReactElement {
   }, [open]);
 
   const onSelectType = (nextType: AlertType): void => {
-    if ((renderProps.block.props as any)?.type === nextType) {
+    if (renderProps.block.props?.type === nextType) {
       setOpen(false);
       return;
     }
     try {
-      (renderProps.editor as any)?.updateBlock?.(renderProps.block as any, {
+      renderProps.editor?.updateBlock?.(renderProps.block, {
         type: "alert",
         props: { type: nextType },
       });
@@ -169,13 +174,13 @@ function AlertBlockComponent(renderProps: any): ReactElement {
         )}
       </div>
       <div
-        ref={renderProps.contentRef}
+        ref={renderProps.contentRef as unknown as (el: HTMLDivElement | null) => void}
         dir="ltr"
         style={{
           flex: 1,
           color: alertType.color,
           minHeight: "1.25rem",
-          textAlign: (renderProps.block.props as any)?.textAlignment ?? "left",
+          textAlign: renderProps.block.props?.textAlignment ?? "left",
           direction: "ltr",
           unicodeBidi: "isolate",
         }}
@@ -200,7 +205,7 @@ export const Alert = createReactBlockSpec(
   },
   {
     render: (props): ReactElement => {
-      return <AlertBlockComponent {...props} />;
+      return <AlertBlockComponent {...(props as unknown as RenderProps)} />;
     },
     parse: (element) => {
       if (element.tagName === "DIV" && element.classList.contains("alert-block")) {
@@ -216,7 +221,7 @@ export const Alert = createReactBlockSpec(
     // Return a React element for external HTML serialization (e.g. drag/clipboard)
     // Matching the structure of `render` avoids passing an HTMLElement into React.
     toExternalHTML: (props): ReactElement => {
-      const blockType = (props.block.props as any)?.type || "info";
+      const blockType = (props.block.props as BlockProps | undefined)?.type || "info";
       const alertType =
         alertTypes.find((a) => a.value === blockType) || alertTypes[3];
       const Icon = alertType.icon;

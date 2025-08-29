@@ -31,7 +31,7 @@ export function useCommentThreads(docId: string | null, includeResolved = true) 
       }
     }
     return Array.from(ids);
-  }, [rows]);
+  }, [rowsRaw]);
 
   const users = useQuery(api.comments.resolveUsers, authorIds.length ? { ids: authorIds } : "skip") as ResolvedUser[] | undefined;
 

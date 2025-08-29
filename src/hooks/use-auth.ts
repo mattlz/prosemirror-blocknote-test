@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 export function useCurrentUser() {
-  return useQuery(api.auth.getCurrentUser);
+  return useQuery(api.users.current);
 }
 
 export function useAuth() {
@@ -20,5 +20,4 @@ export function useAuth() {
     signOut,
   } as const;
 }
-
 

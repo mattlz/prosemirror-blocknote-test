@@ -5,22 +5,27 @@ import { useMemo, type ReactElement } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui";
+import type { Document } from "@/types/documents";
 
 type DatatableProps = {
   table: "documents";
-  textAlignment?: (typeof defaultProps.textAlignment)["default"];
+  textAlignment?: 'left' | 'center' | 'right' | 'justify';
 };
 
-function DatatableBlockComponent(renderProps: any): ReactElement {
+type BlockProps = { table?: "documents"; textAlignment?: (typeof defaultProps.textAlignment)["default"] };
+type RenderBlock = { props?: BlockProps };
+type RenderProps = { block: RenderBlock } & Record<string, unknown>;
+
+function DatatableBlockComponent(renderProps: RenderProps): ReactElement {
   const props = (renderProps.block.props as DatatableProps) ?? { table: "documents" };
   const table = props.table ?? "documents";
 
-  const list = useQuery(api.documents.list, {});
+  const list = useQuery(api.documents.list, {}) as Document[] | undefined;
   const createDoc = useMutation(api.documents.create);
 
   const rows = useMemo(() => {
     if (table !== "documents") return [] as Array<{ id: string; title: string; createdAt: number }>;
-    return (list as any[])?.map((d: any) => ({ id: String(d._id), title: d.title as string, createdAt: d.createdAt as number })) ?? [];
+    return (list ?? []).map((d) => ({ id: String(d._id), title: d.title, createdAt: d.createdAt }));
   }, [list, table]);
 
   const handleAdd = async (): Promise<void> => {
@@ -91,7 +96,7 @@ export const Datatable = createReactBlockSpec(
   },
   {
     render: (props): ReactElement => {
-      return <DatatableBlockComponent {...props} />;
+      return <DatatableBlockComponent {...(props as unknown as RenderProps)} />;
     },
     toExternalHTML: (props): ReactElement => {
       const tableName = ((props.block.props as DatatableProps)?.table ?? "documents").toString();
@@ -105,5 +110,3 @@ export const Datatable = createReactBlockSpec(
 );
 
 export type DatatableType = "datatable";
-
-

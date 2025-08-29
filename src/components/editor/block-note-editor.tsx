@@ -103,7 +103,8 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 	const latestVersion = useQuery(api.documentSyncApi.latestVersion, { id: docId }) as number | null;
 	const submitSnapshot = useMutation(api.documentSyncApi.submitSnapshot);
 
-	const editorFromSync = useMemo(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const editorFromSync = useMemo(() => {
 		if (tiptapSync.initialContent === null) return null;
 		// Headless editor for PM->BlockNote conversion only (no comments in headless)
 		// The TipTap snapshot may include a PM mark type named "comment" which
@@ -128,14 +129,14 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 		if (pmNode.firstChild) {
 			pmNode.firstChild.descendants((node: PMNode) => {
 				// nodeToBlock types are not exported; cast to unknown
-				blocks.push(nodeToBlock(node as unknown, headless.pmSchema));
+				blocks.push(nodeToBlock(node as never, headless.pmSchema));
 				return false as unknown as void;
 			});
 		}
 		const created = BlockNoteEditor.create({
 			schema: customSchema,
 			resolveUsers,
-				comments: { threadStore: threadStore as unknown },
+				comments: { threadStore },
 			_tiptapOptions: {
 				extensions: [tiptapSync.extension],
 			},
@@ -150,7 +151,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 						return filtered;
 					}, { showLabels: true }) }),
 			},
-			initialContent: blocks.length > 0 ? blocks : undefined,
+				initialContent: blocks.length > 0 ? (blocks as unknown as object[]) : undefined,
 		});
 		// Only re-create when initial content changes (on initial load) or docId changes
 		// All dynamic data (presence, cursors, comments) flows through refs
@@ -167,7 +168,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 	const nameRef = useRef<string>("User");
 	
 	// Update nameRef when user email becomes available
-	useEffect(() => {
+  useEffect(() => {
 		if (userEmail && nameRef.current === "User") {
 			nameRef.current = userEmail;
 		}
@@ -246,31 +247,34 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 	useEffect(() => {
 		if (!editorInst) return;
 		
-		const handleTransaction = (transaction: { docChanged?: boolean; steps?: unknown[]; doc?: { content: { size: number } } }) => {
-			if (transaction.docChanged) {
-				console.log("📝 EDITOR TRANSACTION:", {
-					docId,
-					stepCount: transaction.steps.length,
-					stepTypes: (transaction.steps as Array<Record<string, unknown>>).map((s) => (s as { stepType?: string }).stepType || 'unknown'),
-					timestamp: new Date().toISOString(),
-					docSize: transaction.doc.content.size
-				});
-			}
+			const handleTransaction = (transaction: { docChanged?: boolean; steps?: unknown[]; doc?: { content: { size: number } } }) => {
+				if (transaction.docChanged) {
+					const steps = (transaction.steps ?? []) as Array<Record<string, unknown>>;
+					console.log("📝 EDITOR TRANSACTION:", {
+						docId,
+						stepCount: steps.length,
+						stepTypes: steps.map((s) => (s as { stepType?: string }).stepType || 'unknown'),
+						timestamp: new Date().toISOString(),
+						docSize: (transaction.doc?.content?.size as number | undefined) ?? 0
+					});
+				}
 		};
 		
 		// Listen to ProseMirror transactions
-		const editor = (editorInst as unknown as { prosemirrorEditor?: { on: (event: string, cb: (tr: unknown) => void) => void; off: (event: string, cb: (tr: unknown) => void) => void } })?.prosemirrorEditor;
-		if (editor) {
-			editor.on('transaction', handleTransaction);
-			console.log("🎧 EDITOR TRANSACTION LISTENER ATTACHED:", { docId });
-		}
-		
-		return () => {
+			const editor = (editorInst as unknown as { prosemirrorEditor?: { on: (event: string, cb: (tr: unknown) => void) => void; off: (event: string, cb: (tr: unknown) => void) => void } })?.prosemirrorEditor;
 			if (editor) {
-				editor.off('transaction', handleTransaction);
-				console.log("🎧 EDITOR TRANSACTION LISTENER REMOVED:", { docId });
+				const adapter = (tr: unknown) => handleTransaction(tr as { docChanged?: boolean; steps?: unknown[]; doc?: { content: { size: number } } });
+				editor.on('transaction', adapter);
+				console.log("🎧 EDITOR TRANSACTION LISTENER ATTACHED:", { docId });
 			}
-		};
+			
+			return () => {
+				if (editor) {
+					const adapter = (tr: unknown) => handleTransaction(tr as { docChanged?: boolean; steps?: unknown[]; doc?: { content: { size: number } } });
+					editor.off('transaction', adapter);
+					console.log("🎧 EDITOR TRANSACTION LISTENER REMOVED:", { docId });
+				}
+			};
 	}, [editorInst, docId]);
 
 	const lastMarkedRef = useRef<Set<string>>(new Set());
@@ -310,7 +314,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 			}
 		}
 			threadStore.setThreadsFromConvex(threadsForDoc);
-	}, [threadsForDoc, threadStore, editorInst]);
+  }, [threadsForDocRaw, threadStore, editorInst]);
 
 	return (
 		<div className="mt-4" data-editor-theme={theme} data-cursor-labels={showCursorLabels ? "on" : "off"}>

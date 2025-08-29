@@ -66,7 +66,7 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 			) : null}
 			<div className="text-lg font-semibold">{documentTitle}</div>
 			<div className="ml-auto flex items-center gap-2">
-				{!readOnly && editor ? <BlockInsertButton editor={editor} /> : null}
+				{!readOnly && editor ? <BlockInsertButton editor={editor as CustomBlockNoteEditor} /> : null}
 				{!readOnly && editor ? (
 					<button
 						aria-label="Save"
@@ -90,7 +90,7 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 								setTimeout(() => {
 									try { document.body.removeChild(t); } catch {}
 								}, 1500);
-							} catch (_e) {
+      } catch {
 								const t = document.createElement("div");
 								t.textContent = "Save failed";
 								t.style.position = "fixed";
@@ -116,7 +116,7 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 					<button aria-label="Page options" className={optionsBtnClass} onClick={onToggleOptions}><Settings className="h-4 w-4" /></button>
 				) : null}
 				<button aria-label="Comments" className={commentsBtnClass} onClick={onToggleComments}><MessageCircle className="h-4 w-4" /></button>
-				{!readOnly ? <PresenceAvatars docId={docId} /> : null}
+				{!readOnly ? <PresenceAvatars docId={docId ?? undefined} /> : null}
 				<div>
 					<Button
 						variant="default"
