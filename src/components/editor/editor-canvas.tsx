@@ -1,7 +1,7 @@
 "use client";
 import type { ReactElement } from "react";
 import { BlockNoteEditor } from "@/components/editor";
-import { IconPicker } from "@/components/sidebar";
+import { IconPicker } from "@/components/editor/sidebar";
 
 interface EditorCanvasProps {
   theme: "light" | "dark";

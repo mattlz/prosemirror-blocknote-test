@@ -53,3 +53,4 @@ export function CommentThread({ threadId, onJumpToBlock }: { threadId: string; o
     </div>
   );
 }
+

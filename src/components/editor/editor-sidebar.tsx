@@ -1,6 +1,6 @@
 "use client";
 import type { ReactElement } from "react";
-import { PageSidebar } from "@/components/sidebar";
+import { PageSidebar } from "@/components/editor/sidebar";
 
 interface EditorSidebarProps {
   sidebarOpen: boolean;

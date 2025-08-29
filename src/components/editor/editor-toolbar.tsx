@@ -1,7 +1,7 @@
 "use client";
 import type { ReactElement } from "react";
 import type { CustomBlockNoteEditor } from "@/components/editor/custom-blocks/custom-schema";
-import { TopBar } from "@/components/layout";
+import { TopBar } from "@/components/editor/editor-top-bar";
 
 interface EditorToolbarProps {
   documentTitle: string;

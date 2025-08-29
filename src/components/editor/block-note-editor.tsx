@@ -8,7 +8,7 @@ import { BlockNoteEditor, nodeToBlock, filterSuggestionItems } from "@blocknote/
 import type { JSONContent } from "@tiptap/core";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { ConvexThreadStore } from "@/app/comments/convex-thread-store";
+import { ConvexThreadStore } from "@/components/comments/convex-thread-store";
 import { useAuthToken } from "@convex-dev/auth/react";
 import { useTiptapSync } from "@convex-dev/prosemirror-sync/tiptap";
 import { createRemoteCursorPlugin } from "@/components/editor";

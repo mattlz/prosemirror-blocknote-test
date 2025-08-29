@@ -42,4 +42,4 @@ BlockNote comments are integrated with Convex.
 - Schema additions in `convex/schema.ts`: `comments`, `commentThreads`.
 - Backend functions in `convex/comments.ts` for listing, creating, replying, updating, deleting, and resolving.
 - Editor integration in `app/editor.tsx` via `useBlockNoteSync` `editorOptions.comments` with a Convex-backed threadStore and `resolveUsers`.
-- Sidebar UI in `app/comments/comments-sidebar.tsx` lists threads, replies, and actions.
+- Sidebar UI in `src/components/comments/comments-sidebar.tsx` lists threads, replies, and actions.

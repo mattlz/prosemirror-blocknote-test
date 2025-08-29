@@ -409,3 +409,4 @@ function formatTime(timestamp: number): string {
            ` at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
   }
 }
+
