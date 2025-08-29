@@ -20,10 +20,37 @@ export default defineSchema({
 		archivedAt: v.optional(v.number()),
 		shareId: v.optional(v.string()),
 		publishedAt: v.optional(v.number()),
-        // NEW template references
-        templateId: v.optional(v.id("documentTemplates")),
-        templateKey: v.optional(v.string()),
-	}).index("by_owner", ["ownerId"]).index("by_created", ["createdAt"]).index("by_shareId", ["shareId"]).index("by_template", ["templateKey"]),
+		// existing template refs
+		templateId: v.optional(v.id("documentTemplates")),
+		templateKey: v.optional(v.string()),
+
+		// Additional fields for main app compatibility (all optional)
+		projectId: v.optional(v.id("projects")),
+		clientId: v.optional(v.id("clients")),
+		departmentId: v.optional(v.id("departments")),
+		documentType: v.optional(v.union(
+			v.literal("project_brief"),
+			v.literal("meeting_notes"),
+			v.literal("wiki_article"),
+			v.literal("resource_doc"),
+			v.literal("retrospective"),
+			v.literal("blank")
+		)),
+		status: v.optional(v.union(
+			v.literal("draft"),
+			v.literal("published"),
+			v.literal("archived")
+		)),
+		metadata: v.optional(v.any()),
+		createdBy: v.optional(v.id("users")),
+	})
+	.index("by_owner", ["ownerId"])
+	.index("by_created", ["createdAt"])
+	.index("by_shareId", ["shareId"])
+	.index("by_template", ["templateKey"])
+	.index("by_status", ["status"])
+	.index("by_type", ["documentType"])
+	.index("by_created_by", ["createdBy"]),
 
 	// Document templates
 	documentTemplates: defineTable({
@@ -108,4 +135,20 @@ export default defineSchema({
 		authorId: v.optional(v.string()),
 	})
 		.index("by_doc", ["docId"]),
+
+	// Placeholder tables for schema validation only
+	projects: defineTable({
+		title: v.string(),
+		createdAt: v.number(),
+	}),
+
+	clients: defineTable({
+		name: v.string(),
+		createdAt: v.number(),
+	}),
+
+	departments: defineTable({
+		name: v.string(),
+		createdAt: v.number(),
+	}),
 });

@@ -11,6 +11,21 @@ export interface Document {
 	// NEW
 	templateId?: Id<"documentTemplates">;
 	templateKey?: string;
+
+	// NEW optional alignment fields
+	projectId?: Id<"projects">;
+	clientId?: Id<"clients">;
+	departmentId?: Id<"departments">;
+	documentType?:
+		| "project_brief"
+		| "meeting_notes"
+		| "wiki_article"
+		| "resource_doc"
+		| "retrospective"
+		| "blank";
+	status?: "draft" | "published" | "archived";
+	metadata?: unknown;
+	createdBy?: Id<"users">;
 }
 
 export interface DocumentTemplate {

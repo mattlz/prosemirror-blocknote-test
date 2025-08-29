@@ -10,9 +10,39 @@ function randomId(): string {
 }
 
 export const list = query({
-    args: {},
-    handler: async (ctx) => {
-        return ctx.db.query("documents").withIndex("by_created", q => q.gt("createdAt", 0)).order("desc").collect();
+    args: {
+        status: v.optional(v.union(
+          v.literal("draft"),
+          v.literal("published"),
+          v.literal("archived")
+        )),
+        documentType: v.optional(v.union(
+          v.literal("project_brief"),
+          v.literal("meeting_notes"),
+          v.literal("wiki_article"),
+          v.literal("resource_doc"),
+          v.literal("retrospective"),
+          v.literal("blank")
+        )),
+    },
+    handler: async (ctx, args) => {
+        const base = ctx.db.query("documents");
+        if (args.status) {
+          return base
+            .withIndex("by_status", qi => qi.eq("status", args.status))
+            .order("desc")
+            .collect();
+        }
+        if (args.documentType) {
+          return base
+            .withIndex("by_type", qi => qi.eq("documentType", args.documentType))
+            .order("desc")
+            .collect();
+        }
+        return base
+          .withIndex("by_created", qi => qi.gt("createdAt", 0))
+          .order("desc")
+          .collect();
     },
 });
 
