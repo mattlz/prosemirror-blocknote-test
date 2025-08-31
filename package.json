@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "auth:setup:dev": "node scripts/setupAuth.mjs dev",
+    "auth:setup:local": "node scripts/setupAuth.mjs local"
   },
   "dependencies": {
     "@auth/core": "^0.37.4",

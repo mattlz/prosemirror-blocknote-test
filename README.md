@@ -43,3 +43,28 @@ BlockNote comments are integrated with Convex.
 - Backend functions in `convex/comments.ts` for listing, creating, replying, updating, deleting, and resolving.
 - Editor integration in `app/editor.tsx` via `useBlockNoteSync` `editorOptions.comments` with a Convex-backed threadStore and `resolveUsers`.
 - Sidebar UI in `src/components/comments/comments-sidebar.tsx` lists threads, replies, and actions.
+
+## Convex Auth (Password) Setup
+
+This project uses `@convex-dev/auth` with the Password provider. You need a signing key (Next.js) and a JWKS (Convex) to enable sign up / sign in.
+
+- Generate and configure keys for the dev deployment:
+
+  - Ensure `.env.dev` points to your Convex dev deployment and URL (already checked into this repo).
+  - Then run:
+
+    - `npm run auth:setup:dev`
+
+    This will:
+    - Generate a new RSA keypair
+    - Set `JWKS` in your Convex dev deployment (for verification)
+    - Set `JWT_PRIVATE_KEY` in `.env.local` (for signing in Next.js)
+    - Point `NEXT_PUBLIC_CONVEX_URL` to your dev deployment
+
+  If you see an access error, run `npx convex dev` to login/select your project, then re-run the script.
+
+- To develop against a local Convex instead, run:
+
+  - `npm run auth:setup:local`
+
+This keeps the existing sign-in/up pages under `/signin` and `/signup` working.

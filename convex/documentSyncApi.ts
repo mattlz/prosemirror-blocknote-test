@@ -10,8 +10,29 @@ async function ensurePageRead(ctx: QueryCtx, id: string) {
 }
 
 async function ensurePageWrite(ctx: MutationCtx, id: string) {
+	console.log("🔍 ENSURE PAGE WRITE CHECK:", {
+		docId: id,
+		timestamp: new Date().toISOString()
+	});
+	
 	const page = await ctx.db.query("documentPages").withIndex("by_docId", q => q.eq("docId", id)).first();
-	if (!page) throw new Error("Unknown page");
+	
+	console.log("🔍 PAGE LOOKUP RESULT:", {
+		docId: id,
+		pageFound: !!page,
+		pageId: page?._id,
+		pageDocId: page?.docId,
+		pageTitle: page?.title,
+		timestamp: new Date().toISOString()
+	});
+	
+	if (!page) {
+		console.error("❌ PAGE NOT FOUND FOR WRITE:", {
+			docId: id,
+			timestamp: new Date().toISOString()
+		});
+		throw new Error("Unknown page");
+	}
 }
 
 export const {
