@@ -73,6 +73,7 @@ async function main() {
   const privateKey = (await exportPKCS8(keys.privateKey)).trimEnd();
   const publicKey = await exportJWK(keys.publicKey);
   const jwks = JSON.stringify({ keys: [{ use: "sig", ...publicKey }] });
+  const sanitizedPrivateKey = privateKey.replaceAll("\n", " ");
 
   // 1) Set JWKS in Convex env for the chosen deployment (verification on the backend)
   {
@@ -86,10 +87,22 @@ async function main() {
     }
   }
 
-  // 2) Put JWT_PRIVATE_KEY into Next.js local env (signing on the frontend server)
+  // 2) Set JWT_PRIVATE_KEY in Convex env (signing on the backend)
+  {
+    const res = spawnSync(
+      process.platform === "win32" ? "npx.cmd" : "npx",
+      ["--yes", "convex", "env", "set", "JWT_PRIVATE_KEY", sanitizedPrivateKey],
+      { stdio: "inherit", env: { ...process.env, CONVEX_DEPLOYMENT: deployment } }
+    );
+    if (res.status !== 0) {
+      console.error("Warning: Failed setting JWT_PRIVATE_KEY in Convex env. You may need to run `npx convex dev` to select/login to the project, then re-run this script.");
+    }
+  }
+
+  // 3) Put JWT_PRIVATE_KEY into Next.js local env (signing on the frontend server)
   {
     const nextEnvPath = path.join(repoRoot, ".env.local");
-    const updates = { JWT_PRIVATE_KEY: privateKey };
+    const updates = { JWT_PRIVATE_KEY: sanitizedPrivateKey };
 
     // If connecting to dev, also point Next at dev Convex URL
     if (mode === "dev" && env.NEXT_PUBLIC_CONVEX_URL) {
@@ -98,7 +111,7 @@ async function main() {
     upsertEnvFile(nextEnvPath, updates);
   }
 
-  // 3) Optionally set CONVEX_SITE_URL if provided (used by some providers)
+  // 4) Optionally set CONVEX_SITE_URL if provided (used by some providers)
   if (env.CONVEX_SITE_URL) {
     const res2 = spawnSync(
       process.platform === "win32" ? "npx.cmd" : "npx",
@@ -113,6 +126,7 @@ async function main() {
   console.log("\n✅ Convex Auth keys configured:");
   console.log(`- Deployment: ${deployment}`);
   console.log("- Convex env: JWKS set");
+  console.log("- Convex env: JWT_PRIVATE_KEY set");
   console.log("- .env.local: JWT_PRIVATE_KEY set");
   if (mode === "dev" && env.NEXT_PUBLIC_CONVEX_URL) console.log(`- Next points to: ${env.NEXT_PUBLIC_CONVEX_URL}`);
 }

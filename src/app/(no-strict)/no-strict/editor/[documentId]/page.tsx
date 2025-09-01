@@ -12,10 +12,11 @@ export default function DocumentEditorPage() {
   const params = useParams();
   const documentId = params.documentId as string;
   return (
-    <PageErrorBoundary pageName="Document Editor">
+    <PageErrorBoundary pageName="Document Editor (no-strict)">
       <Suspense fallback={<EditorSkeleton />}>
         <LazyEditorShell documentId={documentId} />
       </Suspense>
     </PageErrorBoundary>
   );
 }
+

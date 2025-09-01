@@ -1,8 +1,11 @@
 "use client";
-import dynamic from "next/dynamic";
+import { Suspense, useEffect } from "react";
 import type { ReactElement } from "react";
+import { EditorBody } from "./editor-body";
 
-const EditorBody = dynamic(() => import("./editor-body").then(m => m.default ?? m.EditorBody), { ssr: false });
+function EditorLoading() {
+  return <div className="p-6 text-neutral-500">Preparing editor…</div>;
+}
 
 interface EditorShellProps {
   documentId?: string | null;
@@ -17,24 +20,18 @@ interface EditorShellProps {
   };
 }
 
-/**
- * EditorShell - Main shell component for the collaborative editor
- * 
- * @remarks
- * This component provides a wrapper around the editor with dynamic loading
- * to ensure proper client-side rendering.
- * 
- * @param props - Component props
- * @returns JSX element containing the editor
- */
-export function EditorShell({ 
-  documentId, 
-  readOnly = false, 
-  hideControls 
-}: EditorShellProps): ReactElement {
-  return <EditorBody documentId={documentId ?? null} readOnly={readOnly} hideControls={hideControls} />;
+export function EditorShell({ documentId, readOnly = false, hideControls }: EditorShellProps): ReactElement {
+  useEffect(() => {
+    console.log("[EditorShell] mount", { documentId });
+    return () => console.log("[EditorShell] unmount", { documentId });
+  }, [documentId]);
+
+  return (
+    <Suspense fallback={<EditorLoading />}>
+      <EditorBody documentId={documentId ?? null} readOnly={readOnly} hideControls={hideControls} />
+    </Suspense>
+  );
 }
 
 export default EditorShell;
-
 

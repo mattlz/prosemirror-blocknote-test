@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "auth:setup": "node scripts/setupAuth.mjs local",
     "auth:setup:dev": "node scripts/setupAuth.mjs dev",
     "auth:setup:local": "node scripts/setupAuth.mjs local"
   },
