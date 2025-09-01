@@ -3,8 +3,8 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
-type CreateArgs = { title: string; templateKey?: string };
-type CreateResult = { documentId: Id<"documents">; pageId: Id<"documentPages">; docId: string };
+type CreateArgs = { title: string; templateKey?: string; documentType?: string; projectId?: Id<"projects"> };
+type CreateResult = { documentId: Id<"documents"> };
 
 /**
  * useDocumentActions — Stable wrappers around Convex document mutations.
@@ -28,4 +28,3 @@ export function useDocumentActions() {
 
   return useMemo(() => ({ create, rename, remove }), [create, rename, remove]);
 }
-

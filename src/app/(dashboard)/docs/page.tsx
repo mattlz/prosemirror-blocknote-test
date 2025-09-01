@@ -3,7 +3,7 @@ import Link from "next/link";
 import { type ReactElement } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useDocuments, useDocumentActions, useDocumentFilter } from "@/hooks";
 import type { Document } from "@/types/documents";
@@ -15,6 +15,7 @@ export default function DocsPage(): ReactElement {
 	const { documents } = useDocuments();
 	const { create, rename, remove } = useDocumentActions();
 	const { filter, setFilter, filtered } = useDocumentFilter(documents as Document[]);
+	const createProjectWithBrief = useMutation(api.projects.createProjectWithBrief);
 
 	return (
 		<div className="mx-auto max-w-5xl p-6">
@@ -33,6 +34,16 @@ export default function DocsPage(): ReactElement {
 						// Redirect to the new document editor
 						router.push(`/editor/${id}`);
 					}}>New</button>
+					<button
+						className="inline-flex h-9 items-center rounded-md border px-3"
+						onClick={async () => {
+							const title = prompt("New project title", "Untitled Project") || "Untitled Project";
+							const { documentId } = await createProjectWithBrief({ title });
+							router.push(`/editor/${documentId}`);
+						}}
+					>
+						New Project
+					</button>
 					<button className="inline-flex h-9 items-center rounded-md border px-3" onClick={async () => { await signOut(); router.replace("/signin"); }}>Sign out</button>
 				</div>
 			</header>

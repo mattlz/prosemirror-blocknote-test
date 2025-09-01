@@ -9,11 +9,11 @@ Goals
 ### Phase 1 — Schema alignment (convex/schema.ts)
 
 Checklist
-- [ ] Ensure users include email/name/image/role and optional client/department references
-- [ ] Expand comments and commentThreads to support tasks and cross-entity links; add indexes
-- [ ] Add notifications table (used by mentions/activity)
-- [ ] Enhance documentTemplates to support “snapshot” pages model (keep key for “blank” back-compat)
-- [ ] Ensure documents/documentPages fields and indexes needed by sync and projects
+- [x] Ensure users include email/name/image/role and optional client/department references
+- [x] Expand comments and commentThreads to support tasks and cross-entity links; add indexes
+- [x] Add notifications table (used by mentions/activity)
+- [x] Enhance documentTemplates to support “snapshot” pages model (keep key for “blank” back-compat)
+- [x] Ensure documents/documentPages fields and indexes needed by sync and projects
 
 Edits (add or update these table definitions and indexes in `convex/schema.ts`):
 
@@ -255,6 +255,11 @@ Checklist
 - [ ] Add task endpoints: listByTask
 - [ ] Add user search: searchUsers
 - [ ] Add mentions + notifications to thread/comment creation
+Checklist
+- [x] Keep editor endpoints and signatures: me, resolveUsers, listByDoc, createThread, createComment, updateComment, deleteComment, resolveThread, listByThread, getThread
+- [x] Add task endpoints: listByTask
+- [x] Add user search: searchUsers
+- [x] Add mentions + notifications to thread/comment creation
 
 Replace the prototype `convex/comments.ts` with this merged superset:
 
@@ -746,6 +751,10 @@ Checklist
 - [ ] Provide helpers to fetch “blank” and “project_brief” templates
 - [ ] Provide internal create-from-template function used by documents/projects
 - [ ] Use PM snapshots to seed pages and ProseMirror docs
+Checklist
+- [x] Provide helpers to fetch “blank” and “project_brief” templates
+- [x] Provide internal create-from-template function used by documents/projects
+- [x] Use PM snapshots to seed pages and ProseMirror docs
 
 Add `convex/templates.ts`:
 
@@ -865,6 +874,10 @@ Checklist
 - [ ] Keep blank create path
 - [ ] Add create-from-template path using helpers
 - [ ] Maintain existing list/rename/remove APIs
+Checklist
+- [x] Keep blank create path
+- [x] Add create-from-template path using helpers
+- [x] Maintain existing list/rename/remove APIs
 
 Replace the `create` mutation with this version (rest of file can remain as-is):
 
@@ -903,6 +916,10 @@ Checklist
 - [ ] Provide a simple “create project + project brief document” mutation for prototype
 - [ ] Ensure it links the created document to the project
 - [ ] Return documentId for redirect to editor
+Checklist
+- [x] Provide a simple “create project + project brief document” mutation for prototype
+- [x] Ensure it links the created document to the project
+- [x] Return documentId for redirect to editor
 
 Add a new file `convex/projects.ts`:
 
@@ -969,6 +986,9 @@ export const createProjectWithBrief = mutation({
 Checklist
 - [ ] Add a “New Project” button next to “New”
 - [ ] On click: prompt for title; call `projects.createProjectWithBrief`; redirect to editor for returned documentId
+Checklist
+- [x] Add a “New Project” button next to “New”
+- [x] On click: prompt for title; call `projects.createProjectWithBrief`; redirect to editor for returned documentId
 
 Edits in `src/app/(dashboard)/docs/page.tsx` (imports and button):
 
@@ -1002,6 +1022,13 @@ Checklist
 - [ ] Task comments: listByTask works; mentions/notifications populate
 - [ ] Presence cursors still update
 - [ ] Two tabs collaborate on same docId
+Checklist
+- [x] New → creates blank doc, opens editor, autosave works
+- [x] New Project → creates project + project brief doc, opens editor
+- [x] Document comments: create/list/reply/resolve still work
+- [x] Task comments: listByTask works; mentions/notifications populate
+- [x] Presence cursors still update
+- [x] Two tabs collaborate on same docId
 
 ### Agent Execution Prompt (prototype-only)
 
