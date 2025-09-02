@@ -21,8 +21,7 @@ export default defineSchema({
 			v.literal("admin"),
 			v.literal("pm"),
 			v.literal("task_owner"),
-			v.literal("client"),
-			v.literal("user") // Allow legacy role during migration
+			v.literal("client")
 		)),
 		status: v.optional(v.union(
 			v.literal("active"),
