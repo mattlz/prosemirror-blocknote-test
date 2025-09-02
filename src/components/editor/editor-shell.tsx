@@ -1,11 +1,7 @@
 "use client";
-import { Suspense, useEffect } from "react";
+import { useEffect } from "react";
 import type { ReactElement } from "react";
 import { EditorBody } from "./editor-body";
-
-function EditorLoading() {
-  return <div className="p-6 text-neutral-500">Preparing editor…</div>;
-}
 
 interface EditorShellProps {
   documentId?: string | null;
@@ -27,9 +23,7 @@ export function EditorShell({ documentId, readOnly = false, hideControls }: Edit
   }, [documentId]);
 
   return (
-    <Suspense fallback={<EditorLoading />}>
-      <EditorBody documentId={documentId ?? null} readOnly={readOnly} hideControls={hideControls} />
-    </Suspense>
+    <EditorBody documentId={documentId ?? null} readOnly={readOnly} hideControls={hideControls} />
   );
 }
 
