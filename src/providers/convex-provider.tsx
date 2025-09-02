@@ -1,15 +1,16 @@
-"use client";
-import { ReactNode, useMemo, type ReactElement } from "react";
-import { ConvexReactClient } from "convex/react";
-import { ConvexAuthProvider } from "@convex-dev/auth/react";
+'use client';
 
-const DEFAULT_CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL || "http://localhost:3210";
+import { ReactNode, useMemo, type ReactElement } from 'react';
+import { ConvexReactClient } from 'convex/react';
+import { ConvexAuthNextjsProvider } from '@convex-dev/auth/nextjs';
 
 export function ConvexProvider({ children }: { children: ReactNode }): ReactElement {
-  const client = useMemo(() => new ConvexReactClient(DEFAULT_CONVEX_URL), []);
-  return <ConvexAuthProvider client={client}>{children}</ConvexAuthProvider>;
+  const url = process.env.NEXT_PUBLIC_CONVEX_URL || 'http://localhost:3210';
+  const client = useMemo(() => new ConvexReactClient(url), [url]);
+  
+  return (
+    <ConvexAuthNextjsProvider client={client}>
+      {children}
+    </ConvexAuthNextjsProvider>
+  );
 }
-
-// Backward-compatible export for existing imports (safe alias)
-export const Providers = ConvexProvider;
-

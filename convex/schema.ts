@@ -5,26 +5,108 @@ import { authTables } from "@convex-dev/auth/server";
 export default defineSchema({
 	...authTables,
 
-	// USERS (ensure these fields exist)
+	// Custom users table that extends Convex Auth's base users table
 	users: defineTable({
-		email: v.string(),
+		// Convex Auth base fields (optional)
 		name: v.optional(v.string()),
 		image: v.optional(v.string()),
-    // Allow legacy role "user" during migration
-    role: v.optional(v.union(
-      v.literal("admin"),
-      v.literal("pm"),
-      v.literal("task_owner"),
-      v.literal("client"),
-      v.literal("user")
-    )),
+		email: v.optional(v.string()),
+		emailVerificationTime: v.optional(v.number()),
+		phone: v.optional(v.string()),
+		phoneVerificationTime: v.optional(v.number()),
+		isAnonymous: v.optional(v.boolean()),
+		
+		// Custom application fields
+		role: v.optional(v.union(
+			v.literal("admin"),
+			v.literal("pm"),
+			v.literal("task_owner"),
+			v.literal("client"),
+			v.literal("user") // Allow legacy role during migration
+		)),
+		status: v.optional(v.union(
+			v.literal("active"),
+			v.literal("inactive"),
+			v.literal("invited")
+		)),
+		
+		// Organization relationship
+		organizationId: v.optional(v.id("organizations")), // Optional during migration
+		
+		// Assignment fields
 		clientId: v.optional(v.id("clients")),
 		departmentIds: v.optional(v.array(v.id("departments"))),
+		
+		// User profile fields
+		jobTitle: v.optional(v.string()),
+		bio: v.optional(v.string()),
+		timezone: v.optional(v.string()),
+		preferredLanguage: v.optional(v.string()),
+		themePreference: v.optional(v.union(
+			v.literal("system"),
+			v.literal("light"),
+			v.literal("dark")
+		)),
+		
+		// Invitation fields
+		invitedBy: v.optional(v.id("users")),
+		invitedAt: v.optional(v.number()),
+		invitationToken: v.optional(v.string()),
+		
+		// Real-time presence fields
+		lastActive: v.optional(v.number()),
+		currentPage: v.optional(v.string()),
+		
+		// Audit fields
 		createdAt: v.optional(v.number()),
 		updatedAt: v.optional(v.number()),
-		// keep prototype-specific status if present
-		status: v.optional(v.union(v.literal("active"), v.literal("inactive"), v.literal("invited"))),
-	}).index("by_email", ["email"]),
+	})
+		.index("by_email", ["email"])
+		.index("by_status", ["status"])
+		.index("by_role", ["role"])
+		.index("by_organization", ["organizationId"]),
+	
+	// Organization table for global settings and multi-tenant architecture
+	organizations: defineTable({
+		// Basic Information
+		name: v.string(),
+		slug: v.string(), // URL-friendly identifier
+		logo: v.optional(v.id("_storage")),
+		website: v.optional(v.string()),
+		timezone: v.string(),
+		
+		// Default Settings (for sprints/capacity)
+		defaultWorkstreamCapacity: v.number(), // Hours per workstream per sprint
+		defaultSprintDuration: v.number(), // Sprint length in weeks
+		
+		// Email Configuration
+		emailFromAddress: v.string(),
+		emailFromName: v.string(),
+		primaryColor: v.string(), // Hex color for email templates/branding
+		
+		// Feature Flags
+		features: v.object({
+			emailInvitations: v.boolean(),
+			slackIntegration: v.boolean(),
+			clientPortal: v.boolean(),
+		}),
+		
+		// Audit Fields
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_slug", ["slug"]),
+	
+	// Password reset tokens for email-based authentication
+	passwordResets: defineTable({
+		userId: v.id("users"),
+		token: v.string(),
+		expiresAt: v.number(),
+		used: v.boolean(),
+		createdAt: v.number(),
+	})
+		.index("by_token", ["token"])
+		.index("by_user", ["userId"]),
 
 	// DOCUMENTS (ensure fields + indexes)
 	documents: defineTable({
@@ -287,4 +369,22 @@ export default defineSchema({
 		name: v.string(),
 		createdAt: v.number(),
 	}),
+	
+	// Sprints table for sprint management
+	sprints: defineTable({
+		title: v.string(),
+		startDate: v.number(),
+		endDate: v.number(),
+		status: v.union(
+			v.literal("planning"),
+			v.literal("active"),
+			v.literal("completed"),
+			v.literal("archived")
+		),
+		organizationId: v.optional(v.id("organizations")),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_status", ["status"])
+		.index("by_organization", ["organizationId"]),
 });

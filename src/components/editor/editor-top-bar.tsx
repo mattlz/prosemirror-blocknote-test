@@ -1,6 +1,7 @@
 "use client";
 import type { ReactElement } from "react";
 import { ArrowLeft, MessageCircle, PanelLeftOpen, Settings, Share2, Save } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { PresenceAvatars } from "@/components/editor";
 import { BlockInsertButton } from "@/components/editor/custom-blocks/block-insert-button";
 import { useMutation, useQuery } from "convex/react";
@@ -27,6 +28,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ documentTitle, docId, documentId, readOnly = false, onToggleComments, commentsOpen, optionsOpen, onToggleOptions, editor, theme = "light" }: TopBarProps): ReactElement {
+    const router = useRouter();
 	const documents = useQuery(api.documents.list, {}) as Document[] | undefined;
 	const currentDoc = useMemo(() => (documents ?? []).find(d => String(d._id) === String(documentId ?? "")) ?? null, [documents, documentId]);
 	const publishMutation = useMutation(api.documents.publish);
@@ -62,7 +64,7 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 	return (
 		<div className={containerClass}>
 			{!readOnly ? (
-				<button className={["inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm", borderClass].join(" ")} onClick={() => { window.location.href = "/docs"; }}><ArrowLeft className="h-4 w-4" /> All docs</button>
+				<button className={["inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm", borderClass].join(" ")} onClick={() => { router.push("/docs"); }}><ArrowLeft className="h-4 w-4" /> All docs</button>
 			) : null}
 			<div className="text-lg font-semibold">{documentTitle}</div>
 			<div className="ml-auto flex items-center gap-2">
