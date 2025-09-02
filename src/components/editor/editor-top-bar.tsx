@@ -8,7 +8,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui";
-import type { Document } from "@/types/documents";
+import type { Document } from "@/types/documents.types";
 import type { CustomBlockNoteEditor } from "@/components/editor/custom-blocks/custom-schema";
 
 interface TopBarProps {

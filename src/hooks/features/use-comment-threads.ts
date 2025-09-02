@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import type { Comment, Thread } from "@/types/comments";
+import type { Comment, Thread } from "@/types/comments.types";
 
 export interface ResolvedUser {
   id: string;

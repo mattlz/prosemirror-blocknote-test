@@ -14,8 +14,8 @@ import { useTiptapSync } from "@convex-dev/prosemirror-sync/tiptap";
 import { createRemoteCursorPlugin } from "@/components/editor";
 import { customSchema, type CustomBlockNoteEditor } from "./custom-blocks/custom-schema";
 import { getCustomSlashMenuItems } from "./custom-blocks/slash-menu-items";
-import type { PresenceData } from "@/types/presence";
-import type { Thread, Comment } from "@/types/comments";
+import type { PresenceData } from "@/types/presence.types";
+import type { Thread, Comment } from "@/types/comments.types";
 import type { Id } from "@/convex/_generated/dataModel";
 
 const INITIAL_DOCUMENT: JSONContent = { type: "doc", content: [] };

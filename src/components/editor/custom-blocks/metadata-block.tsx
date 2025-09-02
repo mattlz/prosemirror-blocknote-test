@@ -4,7 +4,7 @@ import { defaultProps } from "@blocknote/core";
 import { useMemo, type ReactElement } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import type { Document } from "@/types/documents";
+import type { Document } from "@/types/documents.types";
 
 type MetadataProps = {
   documentId?: string;

@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCommentThreads, useCommentActions } from "@/hooks/features/use-comment-threads";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { Comment, Thread } from "@/types/comments";
+import type { Comment, Thread } from "@/types/comments.types";
 
 export default function CommentsSidebar(props: { docId: string; readOnly?: boolean; onJumpToBlock?: (blockId: string) => void; onCreateThread?: (content: string) => void | Promise<void>; theme?: "light" | "dark" }): ReactElement {
   const { docId, readOnly = false, onJumpToBlock, onCreateThread, theme = "light" } = props;

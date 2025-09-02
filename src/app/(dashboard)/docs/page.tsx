@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useDocuments, useDocumentActions, useDocumentFilter } from "@/hooks";
-import type { Document } from "@/types/documents";
+import type { Document } from "@/types/documents.types";
 
 export default function DocsPage(): ReactElement {
 	const { signOut } = useAuthActions();

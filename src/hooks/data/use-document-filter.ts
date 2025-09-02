@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { Document } from "@/types/documents";
+import type { Document } from "@/types/documents.types";
 
 /**
  * useDocumentFilter — Local filter state + memoized filtered list.

@@ -3,7 +3,7 @@ import { useState, type ReactElement } from "react";
 import { ChevronDown, ChevronRight, PanelLeftClose, Plus } from "lucide-react";
 import { usePages } from "@/hooks";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { Page } from "@/types/pages";
+import type { Page } from "@/types/pages.types";
 
 interface PageSidebarProps {
 	documentId: string | null;

@@ -1,5 +1,5 @@
 import type { CommentBody, CommentData, ThreadData } from "@blocknote/core/comments";
-import type { Comment as ConvexComment, Thread as ConvexThread } from "@/types/comments";
+import type { Comment as ConvexComment, Thread as ConvexThread } from "@/types/comments.types";
 import { DefaultThreadStoreAuth, ThreadStore } from "@blocknote/core/comments";
 
 type CreateThreadArgs = {

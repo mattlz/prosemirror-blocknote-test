@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import type { Document } from "@/types/documents";
+import type { Document } from "@/types/documents.types";
 
 /**
  * useDocuments — Fetch list of documents.

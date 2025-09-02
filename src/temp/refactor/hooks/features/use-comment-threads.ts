@@ -1,5 +1,5 @@
 "use client";
-import type { Comment, Thread } from "@/types/comments";
+import type { Comment, Thread } from "@/types/comments.types";
 
 export interface UseCommentThreadsOptions {
   includeResolved?: boolean;

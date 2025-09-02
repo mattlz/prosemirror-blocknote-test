@@ -5,7 +5,7 @@ import { useMemo, type ReactElement } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui";
-import type { Document } from "@/types/documents";
+import type { Document } from "@/types/documents.types";
 
 type DatatableProps = {
   table: "documents";
